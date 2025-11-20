@@ -36,7 +36,7 @@ game_html = """
     
     // 1. プレイヤー画像 (青いスライム風)
     const playerImg = new Image();
-    playerImg.src = "https://github.com/m-fukuda-blip/game/edit/main/player.png";
+    playerImg.src = "https://github.com/m-fukuda-blip/game/blob/5b031b559743d43b4f7add2fceb69416552bf412/player.png";
 
     // 2. 敵の画像 (赤いトゲトゲ)
     const enemyImg = new Image();
