@@ -44,7 +44,7 @@ game_html = """
 
     // 3. アイテム画像 (コイン)
     const itemImg = new Image();
-    itemImg.src = "https://github.com/m-fukuda-blip/game/edit/main/coin.png";
+    itemImg.src = "https://github.com/m-fukuda-blip/game/blob/8bb0035f7a315990508da2d24991a801aaae2806/coin.png";
 
 
     // ゲーム定数
