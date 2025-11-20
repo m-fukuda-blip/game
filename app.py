@@ -2,8 +2,8 @@ import streamlit as st
 import streamlit.components.v1 as components
 
 st.set_page_config(page_title="Action Game with Ranking", layout="wide")
-st.title("🎮 アクションゲーム：ランキング実装版")
-st.caption("機能：❤️ライフ制 / 🆙レベルアップ / ☁️背景 / 🔊効果音 / 🏆ランキング(ブラウザ保存)")
+st.title("🎮 アクションゲーム：強敵追加版")
+st.caption("機能：❤️ライフ制 / 🆙レベルアップ / ☁️背景 / 🔊効果音 / 🏆ランキング / 👾スコア2000で強敵(enemy2)出現")
 st.write("操作方法: **W** ジャンプ / **A** 左移動 / **D** 右移動 / **R** リセット")
 
 # ゲーム本体のHTML/JSコード
@@ -98,6 +98,10 @@ game_html = """
   // 画像読み込み
   const playerImg = new Image(); playerImg.src = "https://raw.githubusercontent.com/m-fukuda-blip/game/main/player.png";
   const enemyImg = new Image(); enemyImg.src = "https://raw.githubusercontent.com/m-fukuda-blip/game/main/enemy.png";
+  
+  // ★追加：強敵用の画像
+  const enemy2Img = new Image(); enemy2Img.src = "https://raw.githubusercontent.com/m-fukuda-blip/game/main/enemy2.png";
+  
   const itemImg = new Image(); itemImg.src = "https://raw.githubusercontent.com/m-fukuda-blip/game/main/coin.png";
 
   // ゲーム変数
@@ -142,7 +146,6 @@ game_html = """
 
   function checkRankIn(currentScore) {
     const rankings = getRankings();
-    // まだ10人いない、または10位のスコアより高い場合
     if (rankings.length < 10) return true;
     return currentScore > rankings[rankings.length - 1].score;
   }
@@ -152,14 +155,11 @@ game_html = """
     let rankings = getRankings();
     
     rankings.push({ name: name, score: score });
-    // スコア降順でソート
     rankings.sort((a, b) => b.score - a.score);
-    // 上位10件のみ保持
     rankings = rankings.slice(0, 10);
     
     saveRankings(rankings);
     
-    // UI更新
     inputSection.style.display = 'none';
     showRankingTable();
   }
@@ -168,12 +168,10 @@ game_html = """
     const rankings = getRankings();
     rankingBody.innerHTML = "";
     
-    // 枠が足りないときのために空データを埋める表示用ロジック
     for (let i = 0; i < 10; i++) {
         let r = rankings[i];
         let row = document.createElement('tr');
         if (r) {
-            // 今回のスコアをハイライト
             let style = (r.score === score && inputSection.style.display === 'none') ? "color: yellow; font-weight:bold;" : "";
             row.innerHTML = `<td class="rank-col">${i + 1}</td><td style="${style}">${r.name}</td><td class="score-col">${r.score}</td>`;
         } else {
@@ -187,13 +185,10 @@ game_html = """
     gameOver = true;
     overlay.style.display = 'block';
     finalScoreDisplay.innerText = "Final Score: " + score;
-    nameInput.value = ""; // 入力欄リセット
+    nameInput.value = ""; 
 
-    // ランクイン判定
     if (score > 0 && checkRankIn(score)) {
         inputSection.style.display = 'block';
-        // キーボードイベントがゲーム操作と干渉しないようにフォーカス時に対策が必要だが
-        // ゲームオーバー時はupdateが止まるので大丈夫
         nameInput.focus();
     } else {
         inputSection.style.display = 'none';
@@ -213,7 +208,7 @@ game_html = """
     osc.connect(gain);
     gain.connect(audioCtx.destination);
     const now = audioCtx.currentTime;
-
+    
     if (type === 'jump') {
         osc.type = 'square'; osc.frequency.setValueAtTime(150, now); osc.frequency.linearRampToValueAtTime(300, now + 0.1);
         gain.gain.setValueAtTime(0.1, now); gain.gain.exponentialRampToValueAtTime(0.01, now + 0.1);
@@ -230,7 +225,6 @@ game_html = """
   }
 
   document.addEventListener('keydown', (e) => {
-    // 名前入力中はゲーム操作を無効化
     if (document.activeElement === nameInput) {
         if (e.key === 'Enter') submitScore();
         return;
@@ -248,11 +242,29 @@ game_html = """
   });
 
   function spawnEnemy() {
-    const type = Math.random() < 0.5 ? 'ground' : 'flying';
+    let type = Math.random() < 0.5 ? 'ground' : 'flying';
     let speedBase = Math.random() * 3 + 2;
-    let enemy = { x: canvas.width, y: 0, width: 35, height: 35, dx: -(speedBase * gameSpeed), dy: 0, type: type, angle: 0 };
-    if (type === 'ground') enemy.y = GROUND_Y - enemy.height;
+    
+    // ★スコア2000以上なら、30%の確率で「強敵」にする（仕様変更なし）
+    if (score >= 2000 && Math.random() < 0.3) {
+        type = 'hard';
+        speedBase = 7; // 通常より速い
+    }
+
+    let enemy = { 
+        x: canvas.width, 
+        y: 0, 
+        width: 35, 
+        height: 35, 
+        dx: -(speedBase * gameSpeed), 
+        dy: 0, 
+        type: type, 
+        angle: 0 
+    };
+    
+    if (type === 'ground' || type === 'hard') enemy.y = GROUND_Y - enemy.height;
     else enemy.y = Math.random() * 80 + 200;
+    
     enemies.push(enemy);
     let spawnRate = Math.max(20, 60 - (level * 5)); 
     nextEnemySpawn = frameCount + Math.random() * spawnRate + spawnRate;
@@ -297,7 +309,7 @@ game_html = """
     isInvincible = false; nextEnemySpawn = 50; nextItemSpawn = 30;
     scoreEl.innerText = score; levelEl.innerText = level; updateHearts();
     initClouds();
-    overlay.style.display = 'none'; // オーバーレイを隠す
+    overlay.style.display = 'none';
     loop();
   }
 
@@ -332,6 +344,7 @@ game_html = """
     for (let i = 0; i < enemies.length; i++) {
       let e = enemies[i]; e.x += e.dx;
       if (e.type === 'flying') { e.angle += 0.1; e.y += Math.sin(e.angle) * 2; }
+      
       if (e.x + e.width < 0) { enemies.splice(i, 1); i--; continue; }
       if (player.x < e.x + e.width && player.x + player.width > e.x && player.y < e.y + e.height && player.y + player.height > e.y) {
         if (player.dy > 0 && player.y + player.height < e.y + e.height * 0.6) {
@@ -340,7 +353,6 @@ game_html = """
           if (!isInvincible) {
               hp--; updateHearts(); playSound('hit');
               if (hp <= 0) {
-                // ゲームオーバー処理を呼び出し
                 handleGameOver();
               } else {
                 isInvincible = true; invincibleTimer = 60; enemies.splice(i, 1); i--;
@@ -367,7 +379,17 @@ game_html = """
     ctx.fillStyle = '#228B22'; ctx.fillRect(0, GROUND_Y, canvas.width, 10);
 
     for (let item of items) drawObj(itemImg, item.x, item.y, item.width, item.height, 'gold');
-    for (let e of enemies) drawObj(enemyImg, e.x, e.y, e.width, e.height, 'red');
+    
+    // 👾 敵の描画（修正：画像切り替え処理）
+    for (let e of enemies) {
+        if (e.type === 'hard') {
+            // 強敵は新しい画像を描画
+            drawObj(enemy2Img, e.x, e.y, e.width, e.height, 'purple');
+        } else {
+            // 通常の敵
+            drawObj(enemyImg, e.x, e.y, e.width, e.height, 'red');
+        }
+    }
 
     ctx.save();
     if (isInvincible && Math.floor(Date.now() / 100) % 2 === 0) ctx.globalAlpha = 0.5;
