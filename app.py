@@ -1,19 +1,17 @@
 import streamlit as st
 import streamlit.components.v1 as components
 
-st.set_page_config(page_title="Graphic Platformer", layout="wide")
+st.set_page_config(page_title="Fixed Game", layout="wide")
+st.title("🎮 修正版：横スクロールアクション")
+st.write("もし画像が表示されない場合は、色付きの四角形が表示されます。")
 
-st.title("🎮 横スクロール：画像読み込みVer")
-st.write("キャラクターや敵が画像（イラスト）になりました！")
-
-# ゲームの本体
 game_html = """
 <!DOCTYPE html>
 <html>
 <head>
 <style>
     body { margin: 0; overflow: hidden; background-color: #222; color: white; font-family: sans-serif; display: flex; justify-content: center; align-items: center; height: 80vh; }
-    canvas { background-color: #87CEEB; border: 4px solid #fff; box-shadow: 0 0 20px rgba(0,0,0,0.5); image-rendering: pixelated; } /* ドット絵くっきり */
+    canvas { background-color: #87CEEB; border: 4px solid #fff; box-shadow: 0 0 20px rgba(0,0,0,0.5); image-rendering: pixelated; }
     #ui-layer { position: absolute; top: 20px; left: 20px; font-size: 24px; font-weight: bold; color: black; pointer-events: none;}
     #message { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); font-size: 40px; color: red; font-weight: bold; display: none; text-shadow: 2px 2px white; text-align: center; }
 </style>
@@ -30,24 +28,24 @@ game_html = """
     const scoreEl = document.getElementById('score');
     const msgEl = document.getElementById('message');
 
-    // --- 画像の読み込み設定 ---
-    // ここを自分の画像のURL（GitHubのRaw URLなど）に書き換えると好きな画像になります。
-    // 今回はすぐに動くように、簡易的なイラストデータを直接埋め込んでいます。
+    // ==========================================
+    // 画像の設定 (ここを修正)
+    // ==========================================
     
-    // 1. プレイヤー画像 (青いスライム風)
+    // 1. プレイヤー画像 (Base64データ)
     const playerImg = new Image();
-    playerImg.src = "https://github.com/m-fukuda-blip/game/blob/5b031b559743d43b4f7add2fceb69416552bf412/player.png";
+    playerImg.src = "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAzMCAzMCI+CiAgPHBhdGggZD0iTTE1IDJDOCAyIDIgOCAyIDE1czYgMTMgMTMgMTMgMTMtNiAxMy0xM1MyMiAyIDE1IDJ6IiBmaWxsPSIjMzMzM2ZmIi8+CiAgPGNpcmNsZSBjeD0iMTAiIGN5PSIxMiIgcj0iMyIgZmlsbD0id2hpdGUiLz4KICA8Y2lyY2xlIGN4PSIyMCIgY3k9IjEyIiByPSIzIiBmaWxsPSJ3aGl0ZSIvPgogIDxwYXRoIGQ9Ik0xMCAyMCBxNSAzIDEwIDAiIHN0cm9rZT0id2hpdGUiIGZpbGw9Im5vbmUiIHN0cm9rZS13aWR0aD0iMiIvPgo8L3N2Zz4=";
 
-    // 2. 敵の画像 (赤いトゲトゲ)
+    // 2. 敵の画像
     const enemyImg = new Image();
-    enemyImg.src = "https://github.com/m-fukuda-blip/game/blob/803c7fc3898d42808aea5f4f864dbca0d471dd50/enemy.png";
+    enemyImg.src = "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAzMCAzMCI+CiAgPHJlY3QgeD0iMiIgeT0iMiIgd2lkdGg9IjI2IiBoZWlnaHQ9IjI2IiByeD0iNSIgZmlsbD0iI2ZmMzMzMyIvPgogIDxwYXRoIGQ9Ik04IDEwIEwxMiAxNSBMOCAyMCBNMjIgMTAgTDE4IDE1IEwyMiAyMCIgc3Ryb2tlPSJibGFjayIgc3Ryb2tlLXdpZHRoPSIyIiBmaWxsPSJub25lIi8+CiAgPHBhdGggZD0iTTEwIDUgTDE1IDIgTDIwIDUiIGZpbGw9ImJsYWNrIi8+Cjwvc3ZnPg==";
 
-    // 3. アイテム画像 (コイン)
+    // 3. アイテム画像
     const itemImg = new Image();
-    itemImg.src = "https://github.com/m-fukuda-blip/game/blob/8bb0035f7a315990508da2d24991a801aaae2806/coin.png";
+    itemImg.src = "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAzMCAzMCI+CiAgPGNpcmNsZSBjeD0iMTUiIGN5PSIxNSIgcj0iMTMiIGZpbGw9IiNmZmQ3MDAiIHN0cm9rZT0ib3JhbmdlIiBzdHJva2Utd2lkdGg9IjIiLz4KICA8dGV4dCB4PSI1MCUiIHk9IjU1JSIgZG9taW5hbnQtYmFzZWxpbmU9Im1pZGRsZSIgdGV4dC1hbmNob3I9Im1pZGRsZSIgZm9udC1zaXplPSIyMCIgZm9udC13ZWlnaHQ9ImJvbGQiIGZpbGw9IiNiODg2MGIiPiQ8L3RleHQ+Cjwvc3ZnPg==";
 
+    // ==========================================
 
-    // ゲーム定数
     const GRAVITY = 0.6;
     const FRICTION = 0.8;
     const GROUND_Y = 360;
@@ -57,13 +55,9 @@ game_html = """
     let frameCount = 0;
     let nextEnemySpawn = 0;
     let nextItemSpawn = 0;
-    let facingRight = true; // プレイヤーの向き
+    let facingRight = true;
 
-    const player = {
-        x: 100, y: 300, width: 40, height: 40, // 画像に合わせてサイズ調整
-        speed: 5, dx: 0, dy: 0, jumping: false
-    };
-
+    const player = { x: 100, y: 300, width: 40, height: 40, speed: 5, dx: 0, dy: 0, jumping: false };
     let enemies = [];
     let items = [];
     const keys = { right: false, left: false, up: false };
@@ -71,12 +65,7 @@ game_html = """
     document.addEventListener('keydown', (e) => {
         if (e.code === 'KeyD') { keys.right = true; facingRight = true; }
         if (e.code === 'KeyA') { keys.left = true; facingRight = false; }
-        if (e.code === 'KeyW') {
-            if (!player.jumping && !gameOver) {
-                player.jumping = true;
-                player.dy = -12;
-            }
-        }
+        if (e.code === 'KeyW') { if (!player.jumping && !gameOver) { player.jumping = true; player.dy = -12; } }
         if (e.code === 'KeyR' && gameOver) resetGame();
     });
 
@@ -85,42 +74,27 @@ game_html = """
         if (e.code === 'KeyA') keys.left = false;
     });
 
-    function randomRange(min, max) { return Math.random() * (max - min) + min; }
-
     function spawnEnemy() {
         const type = Math.random() < 0.5 ? 'ground' : 'flying';
         let enemy = {
-            x: canvas.width,
-            y: 0,
-            width: 35, height: 35,
-            dx: -randomRange(2, 5),
-            dy: 0,
-            type: type,
-            angle: 0
+            x: canvas.width, y: 0, width: 35, height: 35, dx: -(Math.random() * 3 + 2), dy: 0, type: type, angle: 0
         };
         if (type === 'ground') enemy.y = GROUND_Y - enemy.height;
-        else enemy.y = randomRange(200, 280);
-        
+        else enemy.y = Math.random() * 80 + 200;
         enemies.push(enemy);
-        nextEnemySpawn = frameCount + randomRange(60, 120);
+        nextEnemySpawn = frameCount + Math.random() * 60 + 60;
     }
 
     function spawnItem() {
-        items.push({
-            x: canvas.width,
-            y: randomRange(150, 300),
-            width: 30, height: 30,
-            dx: -2
-        });
-        nextItemSpawn = frameCount + randomRange(40, 100);
+        items.push({ x: canvas.width, y: Math.random() * 150 + 150, width: 30, height: 30, dx: -2 });
+        nextItemSpawn = frameCount + Math.random() * 60 + 40;
     }
 
     function resetGame() {
         player.x = 100; player.y = 300; player.dx = 0; player.dy = 0;
-        score = 0; enemies = []; items = [];
-        gameOver = false; frameCount = 0;
-        nextEnemySpawn = 50; nextItemSpawn = 30;
-        scoreEl.innerText = score; msgEl.style.display = 'none';
+        score = 0; enemies = []; items = []; gameOver = false; frameCount = 0;
+        nextEnemySpawn = 50; nextItemSpawn = 30; scoreEl.innerText = score;
+        msgEl.style.display = 'none';
         loop();
     }
 
@@ -132,46 +106,30 @@ game_html = """
         else if (keys.left) player.dx = -player.speed;
         else player.dx *= FRICTION;
 
-        player.x += player.dx;
-        player.y += player.dy;
-        player.dy += GRAVITY;
+        player.x += player.dx; player.y += player.dy; player.dy += GRAVITY;
 
-        if (player.y + player.height > GROUND_Y) {
-            player.y = GROUND_Y - player.height;
-            player.dy = 0;
-            player.jumping = false;
-        }
+        if (player.y + player.height > GROUND_Y) { player.y = GROUND_Y - player.height; player.dy = 0; player.jumping = false; }
         if (player.x < 0) player.x = 0;
         if (player.x + player.width > canvas.width) player.x = canvas.width - player.width;
 
         if (frameCount >= nextEnemySpawn) spawnEnemy();
         if (frameCount >= nextItemSpawn) spawnItem();
 
-        // アイテム処理
         for (let i = 0; i < items.length; i++) {
-            let item = items[i];
-            item.x += item.dx;
+            let item = items[i]; item.x += item.dx;
             if (item.x + item.width < 0) { items.splice(i, 1); i--; continue; }
-
-            if (player.x < item.x + item.width && player.x + player.width > item.x &&
-                player.y < item.y + item.height && player.y + player.height > item.y) {
-                score += 50; scoreEl.innerText = score;
-                items.splice(i, 1); i--;
+            if (player.x < item.x + item.width && player.x + player.width > item.x && player.y < item.y + item.height && player.y + player.height > item.y) {
+                score += 50; scoreEl.innerText = score; items.splice(i, 1); i--;
             }
         }
 
-        // 敵処理
         for (let i = 0; i < enemies.length; i++) {
-            let e = enemies[i];
-            e.x += e.dx;
+            let e = enemies[i]; e.x += e.dx;
             if (e.type === 'flying') { e.angle += 0.1; e.y += Math.sin(e.angle) * 2; }
             if (e.x + e.width < 0) { enemies.splice(i, 1); i--; continue; }
-
-            if (player.x < e.x + e.width && player.x + player.width > e.x &&
-                player.y < e.y + e.height && player.y + player.height > e.y) {
+            if (player.x < e.x + e.width && player.x + player.width > e.x && player.y < e.y + e.height && player.y + player.height > e.y) {
                 if (player.dy > 0 && player.y + player.height < e.y + e.height * 0.6) {
-                    enemies.splice(i, 1); i--;
-                    player.dy = -10; score += 100; scoreEl.innerText = score;
+                    enemies.splice(i, 1); i--; player.dy = -10; score += 100; scoreEl.innerText = score;
                 } else {
                     gameOver = true; msgEl.style.display = 'block';
                 }
@@ -179,39 +137,40 @@ game_html = """
         }
     }
 
-    function draw() {
-        ctx.clearRect(0, 0, canvas.width, canvas.height);
-
-        // 地面
-        ctx.fillStyle = '#654321';
-        ctx.fillRect(0, GROUND_Y, canvas.width, 40);
-        ctx.fillStyle = '#228B22'; // 草の色を少しリアルに
-        ctx.fillRect(0, GROUND_Y, canvas.width, 10);
-
-        // アイテム描画 (drawImageを使用)
-        for (let item of items) {
-            ctx.drawImage(itemImg, item.x, item.y, item.width, item.height);
-        }
-
-        // 敵描画
-        for (let e of enemies) {
-            ctx.drawImage(enemyImg, e.x, e.y, e.width, e.height);
-        }
-
-        // プレイヤー描画 (向きに合わせて反転させる処理)
-        ctx.save(); // 現在の描画状態を保存
-        if (!facingRight) {
-            // 左向きの場合：座標系を反転させる
-            ctx.translate(player.x + player.width, player.y);
-            ctx.scale(-1, 1);
-            ctx.drawImage(playerImg, 0, 0, player.width, player.height);
+    // 画像描画を安全に行うヘルパー関数
+    function drawObj(img, x, y, w, h, fallbackColor) {
+        if (img.complete && img.naturalHeight !== 0) {
+            ctx.drawImage(img, x, y, w, h);
         } else {
-            // 右向き（通常）
-            ctx.drawImage(playerImg, player.x, player.y, player.width, player.height);
+            // 画像読み込み失敗時は四角形を表示
+            ctx.fillStyle = fallbackColor;
+            ctx.fillRect(x, y, w, h);
         }
-        ctx.restore(); // 描画状態を元に戻す
     }
 
+    function draw() {
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        
+        ctx.fillStyle = '#654321'; ctx.fillRect(0, GROUND_Y, canvas.width, 40);
+        ctx.fillStyle = '#228B22'; ctx.fillRect(0, GROUND_Y, canvas.width, 10);
+
+        // 安全な描画関数を使用
+        for (let item of items) drawObj(itemImg, item.x, item.y, item.width, item.height, 'gold');
+        for (let e of enemies) drawObj(enemyImg, e.x, e.y, e.width, e.height, 'red');
+
+        ctx.save();
+        if (!facingRight) { ctx.translate(player.x + player.width, player.y); ctx.scale(-1, 1); drawObj(playerImg, 0, 0, player.width, player.height, 'blue'); }
+        else { drawObj(playerImg, player.x, player.y, player.width, player.height, 'blue'); }
+        ctx.restore();
+    }
+
+    function loop() {
+        update();
+        draw();
+        if (!gameOver) requestAnimationFrame(loop);
+    }
+
+    // 画像の読み込みを待たずにスタート（失敗時は四角形で動く）
     resetGame();
 
 </script>
