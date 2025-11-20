@@ -137,12 +137,13 @@ game_html = """
         }
     }
 
-    // 画像描画を安全に行うヘルパー関数
+    // 安全な描画関数（この関数は消さないでください！）
     function drawObj(img, x, y, w, h, fallbackColor) {
+        // 画像が読み込み完了(complete) かつ サイズが0じゃない場合のみ描画
         if (img.complete && img.naturalHeight !== 0) {
             ctx.drawImage(img, x, y, w, h);
         } else {
-            // 画像読み込み失敗時は四角形を表示
+            // まだ読み込み中なら四角形を表示（これでエラー落ちを防ぐ）
             ctx.fillStyle = fallbackColor;
             ctx.fillRect(x, y, w, h);
         }
