@@ -40,7 +40,7 @@ game_html = """
 
     // 2. 敵の画像 (赤いトゲトゲ)
     const enemyImg = new Image();
-    enemyImg.src = "https://github.com/m-fukuda-blip/game/edit/main/enemy.png";
+    enemyImg.src = "https://github.com/m-fukuda-blip/game/blob/803c7fc3898d42808aea5f4f864dbca0d471dd50/enemy.png";
 
     // 3. アイテム画像 (コイン)
     const itemImg = new Image();
