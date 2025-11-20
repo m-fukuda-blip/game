@@ -34,15 +34,15 @@ game_html = """
     
     // 1. プレイヤー画像 (Base64データ)
     const playerImg = new Image();
-    playerImg.src = "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAzMCAzMCI+CiAgPHBhdGggZD0iTTE1IDJDOCAyIDIgOCAyIDE1czYgMTMgMTMgMTMgMTMtNiAxMy0xM1MyMiAyIDE1IDJ6IiBmaWxsPSIjMzMzM2ZmIi8+CiAgPGNpcmNsZSBjeD0iMTAiIGN5PSIxMiIgcj0iMyIgZmlsbD0id2hpdGUiLz4KICA8Y2lyY2xlIGN4PSIyMCIgY3k9IjEyIiByPSIzIiBmaWxsPSJ3aGl0ZSIvPgogIDxwYXRoIGQ9Ik0xMCAyMCBxNSAzIDEwIDAiIHN0cm9rZT0id2hpdGUiIGZpbGw9Im5vbmUiIHN0cm9rZS13aWR0aD0iMiIvPgo8L3N2Zz4=";
+    playerImg.src = "https://raw.githubusercontent.com/m-fukuda-blip/game/main/player.png";
 
     // 2. 敵の画像
     const enemyImg = new Image();
-    enemyImg.src = "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAzMCAzMCI+CiAgPHJlY3QgeD0iMiIgeT0iMiIgd2lkdGg9IjI2IiBoZWlnaHQ9IjI2IiByeD0iNSIgZmlsbD0iI2ZmMzMzMyIvPgogIDxwYXRoIGQ9Ik04IDEwIEwxMiAxNSBMOCAyMCBNMjIgMTAgTDE4IDE1IEwyMiAyMCIgc3Ryb2tlPSJibGFjayIgc3Ryb2tlLXdpZHRoPSIyIiBmaWxsPSJub25lIi8+CiAgPHBhdGggZD0iTTEwIDUgTDE1IDIgTDIwIDUiIGZpbGw9ImJsYWNrIi8+Cjwvc3ZnPg==";
+    enemyImg.src = "https://raw.githubusercontent.com/m-fukuda-blip/game/main/enemy.png";
 
     // 3. アイテム画像
     const itemImg = new Image();
-    itemImg.src = "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAzMCAzMCI+CiAgPGNpcmNsZSBjeD0iMTUiIGN5PSIxNSIgcj0iMTMiIGZpbGw9IiNmZmQ3MDAiIHN0cm9rZT0ib3JhbmdlIiBzdHJva2Utd2lkdGg9IjIiLz4KICA8dGV4dCB4PSI1MCUiIHk9IjU1JSIgZG9taW5hbnQtYmFzZWxpbmU9Im1pZGRsZSIgdGV4dC1hbmNob3I9Im1pZGRsZSIgZm9udC1zaXplPSIyMCIgZm9udC13ZWlnaHQ9ImJvbGQiIGZpbGw9IiNiODg2MGIiPiQ8L3RleHQ+Cjwvc3ZnPg==";
+    itemImg.src = "https://raw.githubusercontent.com/m-fukuda-blip/game/main/coin.png";
 
     // ==========================================
 
