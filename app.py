@@ -1,21 +1,19 @@
 import streamlit as st
 import streamlit.components.v1 as components
 
-st.set_page_config(page_title="Advanced Platformer", layout="wide")
+st.set_page_config(page_title="Graphic Platformer", layout="wide")
 
-st.title("🏃‍♂️ 横スクロールアクション：コインを集めろ！")
-st.write("操作方法: **W**: ジャンプ, **A**: 左移動, **D**: 右移動")
-st.write("🔴 **敵**: 上から踏んで倒せます（空飛ぶ敵に注意！）")
-st.write("🟡 **コイン**: 取るとスコアアップ！")
+st.title("🎮 横スクロール：画像読み込みVer")
+st.write("キャラクターや敵が画像（イラスト）になりました！")
 
-# ゲームの本体（HTML/JS/CSS）
+# ゲームの本体
 game_html = """
 <!DOCTYPE html>
 <html>
 <head>
 <style>
     body { margin: 0; overflow: hidden; background-color: #222; color: white; font-family: sans-serif; display: flex; justify-content: center; align-items: center; height: 80vh; }
-    canvas { background-color: #87CEEB; border: 4px solid #fff; box-shadow: 0 0 20px rgba(0,0,0,0.5); }
+    canvas { background-color: #87CEEB; border: 4px solid #fff; box-shadow: 0 0 20px rgba(0,0,0,0.5); image-rendering: pixelated; } /* ドット絵くっきり */
     #ui-layer { position: absolute; top: 20px; left: 20px; font-size: 24px; font-weight: bold; color: black; pointer-events: none;}
     #message { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); font-size: 40px; color: red; font-weight: bold; display: none; text-shadow: 2px 2px white; text-align: center; }
 </style>
@@ -32,47 +30,47 @@ game_html = """
     const scoreEl = document.getElementById('score');
     const msgEl = document.getElementById('message');
 
+    // --- 画像の読み込み設定 ---
+    // ここを自分の画像のURL（GitHubのRaw URLなど）に書き換えると好きな画像になります。
+    // 今回はすぐに動くように、簡易的なイラストデータを直接埋め込んでいます。
+    
+    // 1. プレイヤー画像 (青いスライム風)
+    const playerImg = new Image();
+    playerImg.src = "https://github.com/m-fukuda-blip/game/edit/main/player.png";
+
+    // 2. 敵の画像 (赤いトゲトゲ)
+    const enemyImg = new Image();
+    enemyImg.src = "https://github.com/m-fukuda-blip/game/edit/main/enemy.png";
+
+    // 3. アイテム画像 (コイン)
+    const itemImg = new Image();
+    itemImg.src = "https://github.com/m-fukuda-blip/game/edit/main/coin.png";
+
+
     // ゲーム定数
     const GRAVITY = 0.6;
     const FRICTION = 0.8;
     const GROUND_Y = 360;
 
-    // ゲーム状態
     let score = 0;
     let gameOver = false;
     let frameCount = 0;
-    
-    // スポーン管理用
     let nextEnemySpawn = 0;
     let nextItemSpawn = 0;
+    let facingRight = true; // プレイヤーの向き
 
-    // プレイヤー設定
     const player = {
-        x: 100,
-        y: 300,
-        width: 30,
-        height: 30,
-        speed: 5,
-        dx: 0,
-        dy: 0,
-        jumping: false,
-        color: '#3333ff'
+        x: 100, y: 300, width: 40, height: 40, // 画像に合わせてサイズ調整
+        speed: 5, dx: 0, dy: 0, jumping: false
     };
 
-    // オブジェクト配列
     let enemies = [];
     let items = [];
-
-    // キー入力管理
-    const keys = {
-        right: false,
-        left: false,
-        up: false
-    };
+    const keys = { right: false, left: false, up: false };
 
     document.addEventListener('keydown', (e) => {
-        if (e.code === 'KeyD') keys.right = true;
-        if (e.code === 'KeyA') keys.left = true;
+        if (e.code === 'KeyD') { keys.right = true; facingRight = true; }
+        if (e.code === 'KeyA') { keys.left = true; facingRight = false; }
         if (e.code === 'KeyW') {
             if (!player.jumping && !gameOver) {
                 player.jumping = true;
@@ -87,68 +85,42 @@ game_html = """
         if (e.code === 'KeyA') keys.left = false;
     });
 
-    // 乱数生成ヘルパー
-    function randomRange(min, max) {
-        return Math.random() * (max - min) + min;
-    }
+    function randomRange(min, max) { return Math.random() * (max - min) + min; }
 
     function spawnEnemy() {
         const type = Math.random() < 0.5 ? 'ground' : 'flying';
-        
         let enemy = {
             x: canvas.width,
             y: 0,
-            width: 30,
-            height: 30,
-            dx: -randomRange(2, 4), // 速度をランダムに
+            width: 35, height: 35,
+            dx: -randomRange(2, 5),
             dy: 0,
             type: type,
-            angle: 0, // 上下移動用
-            color: '#ff3333'
+            angle: 0
         };
-
-        if (type === 'ground') {
-            enemy.y = GROUND_Y - enemy.height;
-        } else {
-            // 空中の敵（高さはランダム、かつ少し高め）
-            enemy.y = randomRange(200, 280);
-            enemy.color = '#cc0000'; // 空の敵は少し暗い赤
-        }
-
+        if (type === 'ground') enemy.y = GROUND_Y - enemy.height;
+        else enemy.y = randomRange(200, 280);
+        
         enemies.push(enemy);
-
-        // 次の敵が出るまでの時間をランダム設定 (60フレーム = 1秒)
-        nextEnemySpawn = frameCount + randomRange(60, 150);
+        nextEnemySpawn = frameCount + randomRange(60, 120);
     }
 
     function spawnItem() {
         items.push({
             x: canvas.width,
-            y: randomRange(150, 320), // ジャンプして届く範囲にランダム配置
-            width: 20,
-            height: 20,
-            dx: -2, // 地面と同じ速度で流れる
-            color: '#FFD700' // 金色
+            y: randomRange(150, 300),
+            width: 30, height: 30,
+            dx: -2
         });
-        
-        // 次のアイテムが出るまでの時間
         nextItemSpawn = frameCount + randomRange(40, 100);
     }
 
     function resetGame() {
-        player.x = 100;
-        player.y = 300;
-        player.dx = 0;
-        player.dy = 0;
-        score = 0;
-        enemies = [];
-        items = [];
-        gameOver = false;
-        frameCount = 0;
-        nextEnemySpawn = 50;
-        nextItemSpawn = 30;
-        scoreEl.innerText = score;
-        msgEl.style.display = 'none';
+        player.x = 100; player.y = 300; player.dx = 0; player.dy = 0;
+        score = 0; enemies = []; items = [];
+        gameOver = false; frameCount = 0;
+        nextEnemySpawn = 50; nextItemSpawn = 30;
+        scoreEl.innerText = score; msgEl.style.display = 'none';
         loop();
     }
 
@@ -156,7 +128,6 @@ game_html = """
         if (gameOver) return;
         frameCount++;
 
-        // --- プレイヤー処理 ---
         if (keys.right) player.dx = player.speed;
         else if (keys.left) player.dx = -player.speed;
         else player.dx *= FRICTION;
@@ -165,84 +136,44 @@ game_html = """
         player.y += player.dy;
         player.dy += GRAVITY;
 
-        // 地面判定
         if (player.y + player.height > GROUND_Y) {
             player.y = GROUND_Y - player.height;
             player.dy = 0;
             player.jumping = false;
         }
-
-        // 画面端制限
         if (player.x < 0) player.x = 0;
         if (player.x + player.width > canvas.width) player.x = canvas.width - player.width;
 
-        // --- 生成処理 ---
         if (frameCount >= nextEnemySpawn) spawnEnemy();
         if (frameCount >= nextItemSpawn) spawnItem();
 
-        // --- アイテム処理 ---
+        // アイテム処理
         for (let i = 0; i < items.length; i++) {
             let item = items[i];
             item.x += item.dx;
+            if (item.x + item.width < 0) { items.splice(i, 1); i--; continue; }
 
-            // 画面外削除
-            if (item.x + item.width < 0) {
-                items.splice(i, 1);
-                i--;
-                continue;
-            }
-
-            // 当たり判定（取得）
-            if (
-                player.x < item.x + item.width &&
-                player.x + player.width > item.x &&
-                player.y < item.y + item.height &&
-                player.y + player.height > item.y
-            ) {
-                score += 50; // スコア加算
-                scoreEl.innerText = score;
-                items.splice(i, 1);
-                i--;
+            if (player.x < item.x + item.width && player.x + player.width > item.x &&
+                player.y < item.y + item.height && player.y + player.height > item.y) {
+                score += 50; scoreEl.innerText = score;
+                items.splice(i, 1); i--;
             }
         }
 
-        // --- 敵処理 ---
+        // 敵処理
         for (let i = 0; i < enemies.length; i++) {
             let e = enemies[i];
             e.x += e.dx;
+            if (e.type === 'flying') { e.angle += 0.1; e.y += Math.sin(e.angle) * 2; }
+            if (e.x + e.width < 0) { enemies.splice(i, 1); i--; continue; }
 
-            // 空飛ぶ敵の波打ち移動
-            if (e.type === 'flying') {
-                e.angle += 0.1;
-                e.y += Math.sin(e.angle) * 2; // ふわふわ動く
-            }
-
-            // 画面外削除
-            if (e.x + e.width < 0) {
-                enemies.splice(i, 1);
-                i--;
-                continue;
-            }
-
-            // 当たり判定
-            if (
-                player.x < e.x + e.width &&
-                player.x + player.width > e.x &&
-                player.y < e.y + e.height &&
-                player.y + player.height > e.y
-            ) {
-                // 上から踏んだか？
-                // (プレイヤーが落下中 かつ 敵の少し上にいる)
+            if (player.x < e.x + e.width && player.x + player.width > e.x &&
+                player.y < e.y + e.height && player.y + player.height > e.y) {
                 if (player.dy > 0 && player.y + player.height < e.y + e.height * 0.6) {
-                    enemies.splice(i, 1);
-                    i--;
-                    player.dy = -10; // 踏んでジャンプ
-                    score += 100;
-                    scoreEl.innerText = score;
+                    enemies.splice(i, 1); i--;
+                    player.dy = -10; score += 100; scoreEl.innerText = score;
                 } else {
-                    // ぶつかった
-                    gameOver = true;
-                    msgEl.style.display = 'block';
+                    gameOver = true; msgEl.style.display = 'block';
                 }
             }
         }
@@ -254,44 +185,33 @@ game_html = """
         // 地面
         ctx.fillStyle = '#654321';
         ctx.fillRect(0, GROUND_Y, canvas.width, 40);
-        ctx.fillStyle = '#32CD32';
+        ctx.fillStyle = '#228B22'; // 草の色を少しリアルに
         ctx.fillRect(0, GROUND_Y, canvas.width, 10);
 
-        // アイテム（黄色い丸）
-        ctx.fillStyle = '#FFD700';
+        // アイテム描画 (drawImageを使用)
         for (let item of items) {
-            ctx.beginPath();
-            ctx.arc(item.x + item.width/2, item.y + item.height/2, item.width/2, 0, Math.PI * 2);
-            ctx.fill();
-            ctx.strokeStyle = 'orange';
-            ctx.stroke();
+            ctx.drawImage(itemImg, item.x, item.y, item.width, item.height);
         }
 
-        // 敵
+        // 敵描画
         for (let e of enemies) {
-            ctx.fillStyle = e.color;
-            ctx.fillRect(e.x, e.y, e.width, e.height);
-            // 敵の目（進行方向）
-            ctx.fillStyle = 'white';
-            ctx.fillRect(e.x + 5, e.y + 5, 10, 10);
+            ctx.drawImage(enemyImg, e.x, e.y, e.width, e.height);
         }
 
-        // プレイヤー
-        ctx.fillStyle = player.color;
-        ctx.fillRect(player.x, player.y, player.width, player.height);
-        // プレイヤーの目
-        ctx.fillStyle = 'white';
-        if (keys.left) ctx.fillRect(player.x + 5, player.y + 5, 10, 10); // 左向きの目
-        else ctx.fillRect(player.x + 15, player.y + 5, 10, 10); // 右向きの目
+        // プレイヤー描画 (向きに合わせて反転させる処理)
+        ctx.save(); // 現在の描画状態を保存
+        if (!facingRight) {
+            // 左向きの場合：座標系を反転させる
+            ctx.translate(player.x + player.width, player.y);
+            ctx.scale(-1, 1);
+            ctx.drawImage(playerImg, 0, 0, player.width, player.height);
+        } else {
+            // 右向き（通常）
+            ctx.drawImage(playerImg, player.x, player.y, player.width, player.height);
+        }
+        ctx.restore(); // 描画状態を元に戻す
     }
 
-    function loop() {
-        update();
-        draw();
-        if (!gameOver) requestAnimationFrame(loop);
-    }
-
-    // 初期化してスタート
     resetGame();
 
 </script>
