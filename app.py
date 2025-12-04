@@ -43,6 +43,11 @@ game_html = f"""
     opacity: 0; 
   }}
 
+  /* スマホ向けタイトル画像サイズ調整 */
+  @media (max-width: 800px) {{
+    .title-img {{ max-width: 60%; }}
+  }}
+
   .start-text {{
     font-size: 40px; color: white; text-shadow: 2px 2px #000;
     font-weight: bold; opacity: 0;
@@ -63,6 +68,7 @@ game_html = f"""
     position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); 
     background: rgba(0, 0, 0, 0.85); border: 4px solid white; border-radius: 10px;
     padding: 30px; text-align: center; color: white; display: none; width: 400px; z-index: 20;
+    max-width: 90%; /* スマホでは画面幅に合わせる */
   }}
   h2 {{ margin-top: 0; color: yellow; text-shadow: 2px 2px #f00; }}
   
@@ -92,16 +98,16 @@ game_html = f"""
 
   .restart-msg {{ margin-top: 20px; font-size: 14px; color: #ccc; }}
 
-  /* --- ★追加: モバイルコントローラー --- */
+  /* --- モバイルコントローラー --- */
   #mobile-controls {{
-    display: none; /* デフォルトでは非表示 */
+    display: none;
     position: absolute;
     bottom: 20px;
     left: 0;
     width: 100%;
     height: 100px;
     z-index: 100;
-    pointer-events: none; /* ボタン以外はタッチを通す */
+    pointer-events: none; 
     justify-content: space-between;
     padding: 0 40px;
     box-sizing: border-box;
@@ -110,6 +116,9 @@ game_html = f"""
   /* スマホ・タブレット（タッチデバイス）でのみ表示 */
   @media (hover: none) and (pointer: coarse) {{
     #mobile-controls {{ display: flex; }}
+    /* スマホの場合はオーバーレイのリスタートメッセージを非表示にし、ボタンを表示 */
+    .restart-msg {{ display: none; }}
+    #mobile-retry-btn {{ display: block !important; }}
   }}
 
   .control-group {{
@@ -138,11 +147,19 @@ game_html = f"""
   }}
   .touch-btn:active {{ background: rgba(255, 255, 255, 0.5); }}
   
-  #btn-reset {{
-    width: 50px; height: 50px; font-size: 20px; 
-    background: rgba(255, 50, 50, 0.4);
-    position: absolute; top: -350px; right: 20px; /* 画面右上に配置 */
-    pointer-events: auto;
+  /* ★追加: ゲームオーバー画面用リスタートボタン (デフォルト非表示) */
+  #mobile-retry-btn {{
+      display: none;
+      margin: 20px auto 0 auto;
+      padding: 10px 30px;
+      font-size: 20px;
+      background: #00d2ff;
+      border: 2px solid white;
+      color: white;
+      font-weight: bold;
+      border-radius: 30px;
+      cursor: pointer;
+      animation: blink 2s infinite;
   }}
 
 </style>
@@ -188,9 +205,11 @@ game_html = f"""
     </div>
 
     <div class="restart-msg">Press 'R' to Restart</div>
+    <!-- ★追加: スマホ用リトライボタン -->
+    <button id="mobile-retry-btn" onclick="resetGame()">🔄 RETRY</button>
 </div>
 
-<!-- ★追加: モバイルコントローラー -->
+<!-- モバイルコントローラー -->
 <div id="mobile-controls">
     <div class="control-group">
         <div id="btn-left" class="touch-btn">◀</div>
@@ -199,8 +218,6 @@ game_html = f"""
     <div class="control-group">
         <div id="btn-jump" class="touch-btn" style="background: rgba(255, 200, 0, 0.4);">▲</div>
     </div>
-    <!-- リセットボタンは右上 -->
-    <div id="btn-reset" class="touch-btn">R</div>
 </div>
 
 <script>
@@ -209,6 +226,13 @@ game_html = f"""
   // ==========================================
   const canvas = document.getElementById('gameCanvas');
   const ctx = canvas.getContext('2d');
+  
+  // ★追加: スマホの場合、Canvas幅を画面幅に合わせる
+  if (window.innerWidth < 800) {{
+      canvas.width = window.innerWidth - 20; // 左右に少し余裕を持たせる
+      // 高さは400のまま維持（縦スクロールゲームっぽくなる）
+  }}
+
   const scoreEl = document.getElementById('score');
   const levelEl = document.getElementById('level');
   const heartsEl = document.getElementById('hearts');
@@ -517,11 +541,11 @@ game_html = f"""
   const btnLeft = document.getElementById('btn-left');
   const btnRight = document.getElementById('btn-right');
   const btnJump = document.getElementById('btn-jump');
-  const btnReset = document.getElementById('btn-reset');
+  const btnReset = document.getElementById('btn-reset'); // 右上の隠しリセット（PCデバッグ用など）
 
   // スマホでのズームやスクロール防止
   document.addEventListener('touchstart', function(e) {{
-      if (e.target.classList.contains('touch-btn')) e.preventDefault();
+      if (e.target.classList.contains('touch-btn') || e.target.id === 'mobile-retry-btn') e.preventDefault();
   }}, {{ passive: false }});
 
   if(btnLeft) {{
