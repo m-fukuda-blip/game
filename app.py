@@ -9,7 +9,7 @@ st.write("操作方法: **W** ジャンプ / **A** 左移動 / **D** 右移動 /
 # ==========================================
 # 👇 ここに GAS (Google Apps Script) のウェブアプリURLを貼ってください
 # ==========================================
-GAS_API_URL = "https://script.google.com/a/macros/taiyokikaku.com/s/AKfycbzMzleBvXbf7Ke1gDpT94PMT6Dbj_FcwREJvyTh4v-2wmeYlxAatXJndF_I2ThDWCYK/exec"
+GAS_API_URL = "https://script.google.com/macros/s/AKfycbwg7MSu49B53bnIcnBY9MrYXAXgmptgXnnRfeQxIjRnkjfTn-jab-eDd2wFiP86svL22Q/exec"
 
 # ゲーム本体のHTML/JSコード
 game_html = f"""
