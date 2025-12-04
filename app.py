@@ -3,10 +3,10 @@ import streamlit.components.v1 as components
 
 st.set_page_config(page_title="Action Game with Ranking & Animation", layout="wide")
 
-# ★修正: タイトルテキストを削除し、画像を表示
+# タイトル画像を表示
 st.image("https://raw.githubusercontent.com/m-fukuda-blip/game/main/gametitlefix.png", use_column_width=True)
 
-st.caption("機能：❤️ライフ制 / 🆙レベルアップ / ☁️背景変化 / 🔊効果音 / 🏆グローバルランキング / 🏃‍♂️アニメーション / 🎵加速するBGM / ✨アイテム効果 / 🧗‍♂️段差判定 / 💥コンボボーナス / 🫨画面シェイク")
+st.caption("機能：❤️ライフ制 / 🆙レベルアップ / ☁️背景変化 / 🔊効果音 / 🏆グローバルランキング / 🏃‍♂️アニメーション / 🎵加速するBGM / ✨アイテム効果 / 🧗‍♂️段差判定 / 💥コンボボーナス / 🫨画面シェイク / 📏サイズ調整版")
 st.write("操作方法: **W** ジャンプ / **A** 左移動 / **D** 右移動 / **R** リセット / **F** 全画面")
 
 # ==========================================
@@ -403,7 +403,8 @@ game_html = f"""
       return wrapper;
   }}
 
-  const P_W = 40; const P_H = 40; 
+  // ★修正: キャラクターサイズ 40 -> 60 (1.5倍)
+  const P_W = 60; const P_H = 60; 
   const playerAnim = {{ idle: [], run: [], jump: [], dead: null }};
   
   for(let i=1; i<=3; i++) {{ playerAnim.idle.push(loadResized(`https://raw.githubusercontent.com/m-fukuda-blip/game/main/Taiki0${{i}}.png`, P_W, P_H)); }}
@@ -411,22 +412,25 @@ game_html = f"""
   for(let i=1; i<=3; i++) {{ playerAnim.jump.push(loadResized(`https://raw.githubusercontent.com/m-fukuda-blip/game/main/Jump0${{i}}.png`, P_W, P_H)); }}
   playerAnim.dead = loadResized("https://raw.githubusercontent.com/m-fukuda-blip/game/main/Dead.png", P_W, P_H);
 
+  // ★修正: 敵サイズ 35 -> 52 (約1.5倍)
   const enemyAnim = [];
   const enemy2Anim = [];
-  for(let i=1; i<=2; i++) {{ enemyAnim.push(loadResized(`https://raw.githubusercontent.com/m-fukuda-blip/game/main/EnemyAction0${{i}}.png`, 35, 35)); }}
-  for(let i=1; i<=2; i++) {{ enemy2Anim.push(loadResized(`https://raw.githubusercontent.com/m-fukuda-blip/game/main/Enemy2Action0${{i}}.png`, 35, 35)); }}
+  for(let i=1; i<=2; i++) {{ enemyAnim.push(loadResized(`https://raw.githubusercontent.com/m-fukuda-blip/game/main/EnemyAction0${{i}}.png`, 52, 52)); }}
+  for(let i=1; i<=2; i++) {{ enemy2Anim.push(loadResized(`https://raw.githubusercontent.com/m-fukuda-blip/game/main/Enemy2Action0${{i}}.png`, 52, 52)); }}
   
-  const itemImgWrapper = loadResized("https://raw.githubusercontent.com/m-fukuda-blip/game/main/coin.png", 30, 30);
-  const capsuleImgWrapper = loadResized("https://raw.githubusercontent.com/m-fukuda-blip/game/main/capsule.png", 30, 30);
-  const mutekiImgWrapper = loadResized("https://raw.githubusercontent.com/m-fukuda-blip/game/main/muteki.png", 30, 30);
-  const jyamaImgWrapper = loadResized("https://raw.githubusercontent.com/m-fukuda-blip/game/main/jyama.png", 30, 30);
+  // ★修正: アイテムサイズ 30 -> 45 (1.5倍)
+  const itemImgWrapper = loadResized("https://raw.githubusercontent.com/m-fukuda-blip/game/main/coin.png", 45, 45);
+  const capsuleImgWrapper = loadResized("https://raw.githubusercontent.com/m-fukuda-blip/game/main/capsule.png", 45, 45);
+  const mutekiImgWrapper = loadResized("https://raw.githubusercontent.com/m-fukuda-blip/game/main/muteki.png", 45, 45);
+  const jyamaImgWrapper = loadResized("https://raw.githubusercontent.com/m-fukuda-blip/game/main/jyama.png", 45, 45);
   
   const itemEffectAnim = [];
-  for(let i=1; i<=3; i++) {{ itemEffectAnim.push(loadResized(`https://raw.githubusercontent.com/m-fukuda-blip/game/main/ItemAction0${{i}}.png`, 30, 30)); }}
+  for(let i=1; i<=3; i++) {{ itemEffectAnim.push(loadResized(`https://raw.githubusercontent.com/m-fukuda-blip/game/main/ItemAction0${{i}}.png`, 45, 45)); }}
 
+  // ★修正: 雲サイズ 170 -> 255 (1.5倍)
   const cloudImgWrappers = [];
   for(let i=1; i<=4; i++) {{ 
-      cloudImgWrappers.push(loadResized(`https://raw.githubusercontent.com/m-fukuda-blip/game/main/cloud${{i}}.png`, 170, 120)); 
+      cloudImgWrappers.push(loadResized(`https://raw.githubusercontent.com/m-fukuda-blip/game/main/cloud${{i}}.png`, 255, 180)); 
   }}
 
   const GRAVITY = 0.6;
@@ -456,8 +460,9 @@ game_html = f"""
   
   let autoRestartTimer = null;
 
+  // ★修正: プレイヤーサイズ初期値 40 -> 60
   const player = {{ 
-      x: 100, y: 0, width: 40, height: 40, speed: 5, dx: 0, dy: 0, jumping: false,
+      x: 100, y: 0, width: 60, height: 60, speed: 5, dx: 0, dy: 0, jumping: false,
       state: 'idle', animIndex: 0, animTimer: 0, 
       animSpeedIdle: 15, animSpeedRun: 8, idlePingPong: 1,
       combo: 0 
@@ -567,6 +572,7 @@ game_html = f"""
     }});
   }}
 
+  // playSound省略 (変更なし)
   function playSound(type) {{
     if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
     if (audioCtx.state === 'suspended') audioCtx.resume();
@@ -644,7 +650,8 @@ game_html = f"""
     terrainSegments = [];
     let x = 0; let prevLevel = 0; const SEG_HEIGHTS = [BASE_GROUND_Y, BASE_GROUND_Y - 40, BASE_GROUND_Y - 80];
     while (x < canvas.width + 100) {{
-        let width = Math.random() * 120 + 80; let gapWidth = 0;
+        // ★修正: 地面の幅を少し大きく調整 (120 -> 180)
+        let width = Math.random() * 180 + 120; let gapWidth = 0;
         if (x > 250 && Math.random() < 0.25) gapWidth = Math.random() * 80 + 60;
         x += gapWidth;
         let delta = Math.floor(Math.random() * 3) - 1; let newLevel = Math.min(2, Math.max(0, prevLevel + delta));
@@ -665,7 +672,8 @@ game_html = f"""
   function spawnEnemy() {{
     let type = Math.random() < 0.5 ? 'ground' : 'flying'; let speedBase = Math.random() * 3 + 2;
     if (score >= 2000 && Math.random() < 0.3) {{ type = 'hard'; speedBase = 5; }}
-    let enemy = {{ x: canvas.width, y: 0, width: 35, height: 35, dx: -(speedBase * gameSpeed), dy: 0, type: type, angle: 0, animIndex: 0, animTimer: 0 }};
+    // ★修正: 敵サイズ 35 -> 52
+    let enemy = {{ x: canvas.width, y: 0, width: 52, height: 52, dx: -(speedBase * gameSpeed), dy: 0, type: type, angle: 0, animIndex: 0, animTimer: 0 }};
     const SAFE_Y_LIMIT = BASE_GROUND_Y - 40; 
     if (type === 'ground' || type === 'hard') {{ 
         const gY = getGroundYAtX(enemy.x); 
@@ -682,7 +690,8 @@ game_html = f"""
     else if (r < 0.035) type = 'trap';
     else if (r < 0.045) type = 'heal';
     else type = 'coin';
-    items.push({{ x: canvas.width, y: Math.random() * 150 + 150, width: 30, height: 30, dx: -2, isCollected: false, animIndex: 0, animTimer: 0, type: type }}); 
+    // ★修正: アイテムサイズ 30 -> 45
+    items.push({{ x: canvas.width, y: Math.random() * 150 + 150, width: 45, height: 45, dx: -2, isCollected: false, animIndex: 0, animTimer: 0, type: type }}); 
     nextItemSpawn = frameCount + Math.random() * 60 + 40; 
   }}
   
