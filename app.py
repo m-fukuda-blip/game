@@ -542,7 +542,6 @@ game_html = f"""
     player.state = 'dead'; 
     stopBGM(); playGameOverSound();
     
-    // ★追加: ゲームオーバー時のシェイク（大）
     addShake(15, 20); 
 
     overlay.style.display = 'block';
@@ -843,13 +842,13 @@ game_html = f"""
                 score += bonusPoints; scoreEl.innerText = score; playSound('coin'); updateLevel(); 
                 if (multiplier > 1) {{ floatingTexts.push({{ x: player.x, y: player.y - 20, text: "BONUS x" + multiplier, life: 60, dy: -1.5 }}); }}
                 
-                // ★追加: 敵を踏んだ時のシェイク（小）
-                addShake(5, 10); 
+                // ★修正: 敵を踏んだ時のシェイクを削除
+                // addShake(5, 10); 
 
             }} else {{ 
                 if (!isInvincible) {{ 
                     hp--; if (hp < 0) hp = 0; updateHearts(); playSound('hit');
-                    // ★追加: ダメージ時のシェイク（大）
+                    // ★ダメージ時のシェイク（大）
                     addShake(15, 20);
                     if (hp <= 0) handleGameOver(); 
                     else {{ isInvincible = true; invincibleTimer = 60; enemies.splice(i, 1); i--; }} 
