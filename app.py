@@ -260,7 +260,10 @@ game_html = f"""
           offCtx.drawImage(img, 0, 0, w, h);
           wrapper.img = offCanvas; wrapper.ready = true;
       }};
-      img.onerror = () => {{ wrapper.error = true; }};
+      img.onerror = () => {{ 
+          console.error("Failed to load image:", src);
+          wrapper.error = true; 
+      }};
       return wrapper;
   }}
 
@@ -290,8 +293,8 @@ game_html = f"""
   // ★ 雲画像 (cloud1.png ~ cloud4.png)
   const cloudImgWrappers = [];
   for(let i=1; i<=4; i++) {{ 
-      // ★修正: 元の雲のサイズ感に合わせて大きく (140x90)
-      cloudImgWrappers.push(loadResized(`https://raw.githubusercontent.com/m-fukuda-blip/game/main/cloud${{i}}.png`, 140, 90)); 
+      // ★修正: サイズ調整 170x120
+      cloudImgWrappers.push(loadResized(`https://raw.githubusercontent.com/m-fukuda-blip/game/main/cloud${{i}}.png`, 170, 120)); 
   }}
 
   // ゲーム変数
@@ -775,6 +778,3 @@ game_html = f"""
 </script>
 </body>
 </html>
-"""
-
-components.html(game_html, height=550, scrolling=False)
