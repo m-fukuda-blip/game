@@ -3,7 +3,7 @@ import streamlit.components.v1 as components
 
 st.set_page_config(page_title="Action Game with Ranking & Animation", layout="wide")
 st.title("🎮 アクションゲーム：アニメーション実装版")
-st.caption("機能：❤️ライフ制 / 🆙レベルアップ / ☁️背景 / 🔊効果音 / 🏆グローバルランキング / 🏃‍♂️アニメーション / 🎵BGM / ✨アイテム効果 / 🧗‍♂️段差判定 / 💥コンボボーナス")
+st.caption("機能：❤️ライフ制 / 🆙レベルアップ / ☁️背景 / 🔊効果音 / 🏆グローバルランキング / 🏃‍♂️アニメーション / 🎵加速するBGM / ✨アイテム効果 / 🧗‍♂️段差判定 / 💥コンボボーナス")
 st.write("操作方法: **W** ジャンプ / **A** 左移動 / **D** 右移動 / **R** リセット / **F** 全画面")
 
 # ==========================================
@@ -161,13 +161,13 @@ game_html = f"""
   const startText = document.getElementById('start-text');
 
   // ==========================================
-  // BGM設定
+  // BGM設定 (8bit Music)
   // ==========================================
   let audioCtx, isBgmPlaying = false;
   let bgmTimeout = null;
   let activeOscillators = [];
-  const BPM = 130;
-  const beatTime = 60 / BPM;
+  const BASE_BPM = 130;
+  const BASE_BEAT_TIME = 60 / BASE_BPM;
 
   const melody = [5,5,6,5,3,-1,3,5, 5,5,6,5,3,-1,3,2, 5,5,6,5,8,8,7,6, 6,5,3,3,-1,5,-1,-1];
   const scaleToFreq = (num) => {{ if(num < 0) return null; const scale = [261.63,293.66,329.63,349.23,392.00,440.00,493.88,523.25]; return scale[num-1]; }};
@@ -187,7 +187,7 @@ game_html = f"""
     activeOscillators.push(noise);
   }}
 
-  function playNoteForBGM(freq, time, duration = beatTime){{
+  function playNoteForBGM(freq, time, duration){{
     if (audioCtx.state === 'suspended') audioCtx.resume();
     const osc = audioCtx.createOscillator();
     osc.type = "square";
@@ -201,15 +201,26 @@ game_html = f"""
     activeOscillators.push(osc);
   }}
 
+  // ★ 修正2: BGM加速ロジック
+  function getCurrentBeatTime() {{
+      // スコア0で1倍、10000で4倍まで加速
+      let multiplier = 1.0 + Math.min(score, 10000) / 10000 * 3.0; 
+      return BASE_BEAT_TIME / multiplier;
+  }}
+
   function playBGMLoop(){{
     if (!isBgmPlaying) return; 
     const start = audioCtx.currentTime;
+    const currentBeat = getCurrentBeatTime(); // 動的にテンポ取得
+
     melody.forEach((note,i)=>{{
-      const t = start + i * beatTime;
-      if(note > 0) playNoteForBGM(scaleToFreq(note), t);
-      else playNoiseForBGM(t,0.03,0.1);
+      const t = start + i * currentBeat;
+      if(note > 0) playNoteForBGM(scaleToFreq(note), t, currentBeat);
+      else playNoiseForBGM(t, 0.03, 0.1);
     }});
-    bgmTimeout = setTimeout(playBGMLoop, melody.length * beatTime * 1000);
+    
+    // 次のループ予約時間も動的に変更
+    bgmTimeout = setTimeout(playBGMLoop, melody.length * currentBeat * 1000);
   }}
 
   function startBGM() {{
@@ -287,7 +298,7 @@ game_html = f"""
   const itemEffectAnim = [];
   for(let i=1; i<=3; i++) {{ itemEffectAnim.push(loadResized(`https://raw.githubusercontent.com/m-fukuda-blip/game/main/ItemAction0${{i}}.png`, 30, 30)); }}
 
-  // ★ 雲画像 (cloud1.png ~ cloud4.png)
+  // ★ 雲画像
   const cloudImgWrappers = [];
   for(let i=1; i<=4; i++) {{ 
       cloudImgWrappers.push(loadResized(`https://raw.githubusercontent.com/m-fukuda-blip/game/main/cloud${{i}}.png`, 170, 120)); 
@@ -325,7 +336,7 @@ game_html = f"""
       x: 100, y: 0, width: 40, height: 40, speed: 5, dx: 0, dy: 0, jumping: false,
       state: 'idle', animIndex: 0, animTimer: 0, 
       animSpeedIdle: 15, animSpeedRun: 8, idlePingPong: 1,
-      combo: 0 // ★コンボカウント追加
+      combo: 0 
   }};
   
   let enemies = [];
@@ -477,7 +488,23 @@ game_html = f"""
     let type = Math.random() < 0.5 ? 'ground' : 'flying'; let speedBase = Math.random() * 3 + 2;
     if (score >= 2000 && Math.random() < 0.3) {{ type = 'hard'; speedBase = 5; }}
     let enemy = {{ x: canvas.width, y: 0, width: 35, height: 35, dx: -(speedBase * gameSpeed), dy: 0, type: type, angle: 0, animIndex: 0, animTimer: 0 }};
-    if (type === 'ground' || type === 'hard') {{ const gY = getGroundYAtX(enemy.x); if (gY !== null) enemy.y = gY - enemy.height; else {{ enemy.type = 'flying'; enemy.y = Math.random() * 80 + 200; }} }} else enemy.y = Math.random() * 80 + 200;
+    
+    // ★ 修正3: 敵の出現位置制限
+    const SAFE_Y_LIMIT = BASE_GROUND_Y - 40; // これより下(Yが大きい)場所には出さない
+    
+    if (type === 'ground' || type === 'hard') {{ 
+        const gY = getGroundYAtX(enemy.x); 
+        // 地面があり、かつ地面の高さが安全ラインより上(Yが小さい)場合のみ地面設置
+        if (gY !== null && gY <= SAFE_Y_LIMIT) {{ 
+            enemy.y = gY - enemy.height; 
+        }} else {{ 
+            // 地面が低すぎる場合は、空中の安全圏に出現させる
+            enemy.type = 'flying'; 
+            enemy.y = Math.random() * (SAFE_Y_LIMIT - 200 - enemy.height) + 200; 
+        }} 
+    }} else {{ 
+        enemy.y = Math.random() * (SAFE_Y_LIMIT - 200 - enemy.height) + 200;
+    }}
     enemies.push(enemy); nextEnemySpawn = frameCount + Math.random() * (Math.max(20, 60 - (level * 5))) + Math.max(20, 60 - (level * 5));
   }}
   
@@ -676,8 +703,9 @@ game_html = f"""
                 }} else if (item.type === 'heal') {{
                     hp = 3; updateHearts(); playSound('heal');
                 }} else if (item.type === 'star') {{
-                    superMode = true; superModeTimer = 1800; 
-                    isInvincible = true; invincibleTimer = 1800;
+                    // ★ 修正1: 無敵時間を900 (15秒) に短縮
+                    superMode = true; superModeTimer = 900; 
+                    isInvincible = true; invincibleTimer = 900;
                     slowMode = false; slowModeTimer = 0;
                     playSound('powerup');
                 }} else if (item.type === 'trap') {{
