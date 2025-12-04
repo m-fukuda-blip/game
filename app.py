@@ -4,7 +4,7 @@ import streamlit.components.v1 as components
 st.set_page_config(page_title="Action Game with Ranking & Animation", layout="wide")
 st.title("🎮 アクションゲーム：アニメーション実装版")
 st.caption("機能：❤️ライフ制 / 🆙レベルアップ / ☁️背景 / 🔊効果音 / 🏆グローバルランキング / 🏃‍♂️キャラクターアニメーション")
-st.write("操作方法: **W** ジャンプ / **A** 左移動 / **D** 右移動 / **R** リセット")
+st.write("操作方法: **W** ジャンプ / **A** 左移動 / **D** 右移動 / **R** リセット / **F** 全画面")
 
 # ==========================================
 # 👇 ここに GAS (Google Apps Script) のウェブアプリURLを貼ってください
@@ -170,7 +170,6 @@ game_html = f"""
   playerAnim.dead = loadResized("https://raw.githubusercontent.com/m-fukuda-blip/game/main/Dead.png", P_W, P_H);
 
   // ★ 敵・アイテムのアニメーション画像
-  // ⚠️ご自身の画像URLに書き換えてください
   const enemyAnim = [];
   const enemy2Anim = [];
   const itemEffectAnim = [];
@@ -320,8 +319,19 @@ game_html = f"""
         return;
     }}
     if (player.state === 'dead' && e.code !== 'KeyR') return;
+    
+    // ★ フルスクリーン切り替え (Fキー)
+    if (e.code === 'KeyF') {{
+        if (!document.fullscreenElement) {{
+            document.documentElement.requestFullscreen();
+        }} else {{
+            if (document.exitFullscreen) {{
+                document.exitFullscreen();
+            }}
+        }}
+    }}
 
-    if (['KeyW', 'KeyA', 'KeyD', 'KeyR'].includes(e.code)) {{ e.preventDefault(); }}
+    if (['KeyW', 'KeyA', 'KeyD', 'KeyR', 'KeyF'].includes(e.code)) {{ e.preventDefault(); }}
     if (e.code === 'KeyD') {{ keys.right = true; facingRight = true; }}
     if (e.code === 'KeyA') {{ keys.left = true; facingRight = false; }}
     if (e.code === 'KeyW') {{ 
@@ -362,7 +372,10 @@ game_html = f"""
   }}
   function spawnEnemy() {{
     let type = Math.random() < 0.5 ? 'ground' : 'flying'; let speedBase = Math.random() * 3 + 2;
-    if (score >= 2000 && Math.random() < 0.3) {{ type = 'hard'; speedBase = 7; }}
+    if (score >= 2000 && Math.random() < 0.3) {{ 
+        type = 'hard'; 
+        speedBase = 5; // ★修正: 強敵の速度を7から5へ (30%ダウン)
+    }}
     // ★ 敵にアニメーション用のプロパティを追加
     let enemy = {{ 
         x: canvas.width, y: 0, width: 35, height: 35, 
