@@ -381,7 +381,7 @@ game_html = f"""
     player.y = gY - player.height;
 
     overlay.style.display = 'none';
-    loop();
+    // loop();  <-- 削除: ここで呼ぶとループが重複する
   }}
 
   function updatePlayerAnimation() {{
@@ -531,6 +531,7 @@ game_html = f"""
   }}
 
   resetGame();
+  loop(); // 初回ループ開始
 
 </script>
 </body>
