@@ -120,27 +120,23 @@ game_html = f"""
   // ==========================================
   // ★ 高負荷対策: 画像リサイズローダー
   // ==========================================
-  // 1000px超えの画像をそのまま描画すると重いため、
-  // 読み込み時に指定サイズ(w, h)に縮小したCanvasをメモリに作成して使う
   function loadResized(src, w, h) {{
       const wrapper = {{ 
-          img: null,  // ここにリサイズ後のCanvasが入る
+          img: null, 
           ready: false, 
           error: false 
       }};
       const img = new Image();
-      img.crossOrigin = "Anonymous"; // 外部画像用
+      img.crossOrigin = "Anonymous"; 
       img.src = src;
       
       img.onload = () => {{
-          // オフスクリーンCanvasを作成して縮小描画
           const offCanvas = document.createElement('canvas');
           offCanvas.width = w;
           offCanvas.height = h;
           const offCtx = offCanvas.getContext('2d');
           offCtx.drawImage(img, 0, 0, w, h);
-          
-          wrapper.img = offCanvas; // 画像の代わりにCanvasをセット
+          wrapper.img = offCanvas; 
           wrapper.ready = true;
       }};
       
@@ -154,9 +150,8 @@ game_html = f"""
   // ==========================================
   // 画像読み込み (リサイズ関数を使用)
   // ==========================================
-  // ⚠️以下のURLをご自身の画像URLに書き換えてください
-  const P_W = 40; // プレイヤー幅
-  const P_H = 40; // プレイヤー高さ
+  const P_W = 40; 
+  const P_H = 40; 
   
   const playerAnim = {{
       idle: [],
@@ -174,7 +169,7 @@ game_html = f"""
   // 死亡
   playerAnim.dead = loadResized("https://raw.githubusercontent.com/m-fukuda-blip/game/main/Dead.png", P_W, P_H);
 
-  // 敵・アイテムもリサイズして軽量化
+  // 敵・アイテム
   const enemyImgWrapper = loadResized("https://raw.githubusercontent.com/m-fukuda-blip/game/main/enemy.png", 35, 35);
   const enemy2ImgWrapper = loadResized("https://raw.githubusercontent.com/m-fukuda-blip/game/main/enemy2.png", 35, 35);
   const itemImgWrapper = loadResized("https://raw.githubusercontent.com/m-fukuda-blip/game/main/coin.png", 30, 30);
@@ -390,14 +385,24 @@ game_html = f"""
   }}
 
   function updatePlayerAnimation() {{
+    // ★ 状態変化の検知用
+    const prevState = player.state;
+
     if (hp <= 0) {{
         player.state = 'dead';
     }} else if (player.jumping) {{
-        player.state = 'jumping';
+        player.state = 'jump'; // ★修正: jumping -> jump
     }} else if (keys.right || keys.left) {{
-        player.state = 'running';
+        player.state = 'run';  // ★修正: running -> run
     }} else {{
         player.state = 'idle';
+    }}
+
+    // ★ 状態が変わったらタイマーとインデックスをリセット（滑らかな動きのため）
+    if (player.state !== prevState) {{
+        player.animTimer = 0;
+        player.animIndex = 0;
+        player.idlePingPong = 1;
     }}
 
     player.animTimer++;
@@ -411,13 +416,13 @@ game_html = f"""
                 player.animTimer = 0;
             }}
             break;
-        case 'running':
+        case 'run': // ★修正: running -> run
             if (player.animTimer > player.animSpeedRun) {{
                 player.animIndex = (player.animIndex + 1) % 3;
                 player.animTimer = 0;
             }}
             break;
-        case 'jumping':
+        case 'jump': // ★修正: jumping -> jump
             if (player.dy < -5) player.animIndex = 0;
             else if (player.dy < 0) player.animIndex = 1;
             else if (player.dy < 5) player.animIndex = 2;
@@ -482,7 +487,6 @@ game_html = f"""
     if (wrapper && wrapper.ready && wrapper.img) {{
         ctx.drawImage(wrapper.img, x, y, w, h);
     }} else {{
-        // まだ読み込み中、またはエラーの場合は四角形を表示
         ctx.fillStyle = fallbackColor; 
         ctx.fillRect(x, y, w, h);
     }}
@@ -495,7 +499,6 @@ game_html = f"""
     ctx.fillStyle = 'rgba(255, 255, 255, 0.7)'; for(let c of clouds) {{ ctx.beginPath(); ctx.arc(c.x, c.y, 30, 0, Math.PI * 2); ctx.arc(c.x + 25, c.y - 10, 35, 0, Math.PI * 2); ctx.arc(c.x + 50, c.y, 30, 0, Math.PI * 2); ctx.fill(); }}
     for (let seg of terrainSegments) {{ ctx.fillStyle = '#654321'; ctx.fillRect(seg.x, seg.topY, seg.width, canvas.height - seg.topY); ctx.fillStyle = '#228B22'; ctx.fillRect(seg.x, seg.topY, seg.width, 10); }}
     
-    // アイテム・敵もラッパーを渡す
     for (let item of items) drawObj(itemImgWrapper, item.x, item.y, item.width, item.height, 'gold');
     for (let e of enemies) {{ 
         if (e.type === 'hard') drawObj(enemy2ImgWrapper, e.x, e.y, e.width, e.height, 'purple'); 
