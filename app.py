@@ -2,8 +2,8 @@ import streamlit as st
 import streamlit.components.v1 as components
 
 st.set_page_config(page_title="Action Game with Ranking", layout="wide")
-st.title("🎮 アクションゲーム：強敵追加版")
-st.caption("機能：❤️ライフ制 / 🆙レベルアップ / ☁️背景 / 🔊効果音 / 🏆ランキング / 👾スコア2000で強敵(enemy2)出現")
+st.title("🎮 アクションゲーム：強敵＋段差＆穴コース版")
+st.caption("機能：❤️ライフ制 / 🆙レベルアップ / ☁️背景 / 🔊効果音 / 🏆ランキング / 👾スコア2000で強敵(enemy2)出現 / 🧱ランダム段差 / 🕳穴に落ちると即ゲームオーバー")
 st.write("操作方法: **W** ジャンプ / **A** 左移動 / **D** 右移動 / **R** リセット")
 
 # ゲーム本体のHTML/JSコード
@@ -98,17 +98,15 @@ game_html = """
   // 画像読み込み
   const playerImg = new Image(); playerImg.src = "https://raw.githubusercontent.com/m-fukuda-blip/game/main/player.png";
   const enemyImg = new Image(); enemyImg.src = "https://raw.githubusercontent.com/m-fukuda-blip/game/main/enemy.png";
-  
   // ★追加：強敵用の画像
   const enemy2Img = new Image(); enemy2Img.src = "https://raw.githubusercontent.com/m-fukuda-blip/game/main/enemy2.png";
-  
   const itemImg = new Image(); itemImg.src = "https://raw.githubusercontent.com/m-fukuda-blip/game/main/coin.png";
 
   // ゲーム変数
   const GRAVITY = 0.6;
   const FRICTION = 0.8;
-  const GROUND_Y = 360;
-
+  const BASE_GROUND_Y = 360;  // 基本の地面高さ（段差の基準）
+  
   let score = 0;
   let level = 1;
   let gameSpeed = 1.0;
@@ -121,7 +119,10 @@ game_html = """
   let isInvincible = false;
   let invincibleTimer = 0;
 
-  const player = { x: 100, y: 300, width: 40, height: 40, speed: 5, dx: 0, dy: 0, jumping: false };
+  // 地形（ランダム段差＆穴）
+  let terrainSegments = [];
+
+  const player = { x: 100, y: 0, width: 40, height: 40, speed: 5, dx: 0, dy: 0, jumping: false };
   let enemies = [];
   let items = [];
   let clouds = [];
@@ -198,6 +199,63 @@ game_html = """
   }
 
   // ==========================================
+  // 地形生成（ランダム段差＆穴）
+  // ==========================================
+  function generateCourse() {
+    terrainSegments = [];
+    let x = 0;
+    let prevLevel = 0; // 0〜2 段階
+    const SEG_HEIGHTS = [BASE_GROUND_Y, BASE_GROUND_Y - 40, BASE_GROUND_Y - 80]; // 1〜2段の段差
+
+    while (x < canvas.width + 100) {
+        // セグメントの幅
+        let width = Math.random() * 120 + 80;
+
+        // 一定距離進んだ後は、たまに穴をあける
+        let gapWidth = 0;
+        if (x > 250 && Math.random() < 0.25) {
+            gapWidth = Math.random() * 80 + 60; // 穴の幅
+        }
+        x += gapWidth; // 穴のぶん進める（ここが足場無しの「穴」）
+
+        // 段差（-1, 0, +1 の範囲で上下）
+        let delta = Math.floor(Math.random() * 3) - 1;
+        let newLevel = Math.min(2, Math.max(0, prevLevel + delta));
+        prevLevel = newLevel;
+        const topY = SEG_HEIGHTS[newLevel];
+
+        terrainSegments.push({ x: x, width: width, topY: topY });
+        x += width;
+    }
+  }
+
+  // プレイヤーの足元の地面Yを取得（なければ null）
+  function getGroundYUnderPlayer() {
+    let groundY = null;
+    for (let seg of terrainSegments) {
+        if (player.x + player.width > seg.x && player.x < seg.x + seg.width) {
+            if (groundY === null || seg.topY < groundY) {
+                groundY = seg.topY;
+            }
+        }
+    }
+    return groundY;
+  }
+
+  // 任意のX位置の地面Yを取得（敵のスポーン用）
+  function getGroundYAtX(x) {
+    let groundY = null;
+    for (let seg of terrainSegments) {
+        if (x >= seg.x && x <= seg.x + seg.width) {
+            if (groundY === null || seg.topY < groundY) {
+                groundY = seg.topY;
+            }
+        }
+    }
+    return groundY; // なければ null（穴の上）
+  }
+
+  // ==========================================
   // ゲームロジック
   // ==========================================
   
@@ -225,14 +283,26 @@ game_html = """
   }
 
   document.addEventListener('keydown', (e) => {
+    // 名前入力中はフォーム優先
     if (document.activeElement === nameInput) {
         if (e.key === 'Enter') submitScore();
         return;
     }
 
+    // ゲーム操作キーはスクロールなどを無効化
+    if (['KeyW', 'KeyA', 'KeyD', 'KeyR'].includes(e.code)) {
+        e.preventDefault();
+    }
+
     if (e.code === 'KeyD') { keys.right = true; facingRight = true; }
     if (e.code === 'KeyA') { keys.left = true; facingRight = false; }
-    if (e.code === 'KeyW') { if (!player.jumping && !gameOver) { player.jumping = true; player.dy = -12; playSound('jump'); } }
+    if (e.code === 'KeyW') { 
+        if (!player.jumping && !gameOver) { 
+            player.jumping = true; 
+            player.dy = -12; 
+            playSound('jump'); 
+        } 
+    }
     if (e.code === 'KeyR' && gameOver) resetGame();
   });
 
@@ -245,7 +315,7 @@ game_html = """
     let type = Math.random() < 0.5 ? 'ground' : 'flying';
     let speedBase = Math.random() * 3 + 2;
     
-    // ★スコア2000以上なら、30%の確率で「強敵」にする（仕様変更なし）
+    // ★スコア2000以上なら、30%の確率で「強敵」にする
     if (score >= 2000 && Math.random() < 0.3) {
         type = 'hard';
         speedBase = 7; // 通常より速い
@@ -262,8 +332,18 @@ game_html = """
         angle: 0 
     };
     
-    if (type === 'ground' || type === 'hard') enemy.y = GROUND_Y - enemy.height;
-    else enemy.y = Math.random() * 80 + 200;
+    if (type === 'ground' || type === 'hard') {
+        const gY = getGroundYAtX(enemy.x);
+        if (gY !== null) {
+            enemy.y = gY - enemy.height;
+        } else {
+            // 足場がない場所なら飛行敵として扱う
+            enemy.type = 'flying';
+            enemy.y = Math.random() * 80 + 200;
+        }
+    } else {
+        enemy.y = Math.random() * 80 + 200;
+    }
     
     enemies.push(enemy);
     let spawnRate = Math.max(20, 60 - (level * 5)); 
@@ -299,16 +379,38 @@ game_html = """
   }
 
   function updateHearts() {
-    let h = ""; for(let i=0; i<hp; i++) h += "❤️"; heartsEl.innerText = h;
+    let h = ""; 
+    for(let i=0; i<hp; i++) h += "❤️"; 
+    heartsEl.innerText = h;
   }
 
   function resetGame() {
-    player.x = 100; player.y = 300; player.dx = 0; player.dy = 0;
-    score = 0; level = 1; gameSpeed = 1.0; hp = 3;
-    enemies = []; items = []; gameOver = false; frameCount = 0;
-    isInvincible = false; nextEnemySpawn = 50; nextItemSpawn = 30;
-    scoreEl.innerText = score; levelEl.innerText = level; updateHearts();
+    player.x = 100; 
+    player.y = 0; 
+    player.dx = 0; 
+    player.dy = 0;
+    score = 0; 
+    level = 1; 
+    gameSpeed = 1.0; 
+    hp = 3;
+    enemies = []; 
+    items = []; 
+    gameOver = false; 
+    frameCount = 0;
+    isInvincible = false; 
+    nextEnemySpawn = 50; 
+    nextItemSpawn = 30;
+    scoreEl.innerText = score; 
+    levelEl.innerText = level; 
+    updateHearts();
     initClouds();
+    generateCourse();
+
+    // スタート地点の足場にプレイヤーを乗せる
+    const startGround = getGroundYUnderPlayer();
+    const gY = startGround !== null ? startGround : BASE_GROUND_Y;
+    player.y = gY - player.height;
+
     overlay.style.display = 'none';
     loop();
   }
@@ -318,44 +420,107 @@ game_html = """
     frameCount++;
     updateClouds();
     
-    if (isInvincible) { invincibleTimer--; if (invincibleTimer <= 0) isInvincible = false; }
+    if (isInvincible) { 
+        invincibleTimer--; 
+        if (invincibleTimer <= 0) isInvincible = false; 
+    }
 
+    // 横移動
     if (keys.right) player.dx = player.speed;
     else if (keys.left) player.dx = -player.speed;
     else player.dx *= FRICTION;
 
-    player.x += player.dx; player.y += player.dy; player.dy += GRAVITY;
+    player.x += player.dx; 
+    player.y += player.dy; 
+    player.dy += GRAVITY;
 
-    if (player.y + player.height > GROUND_Y) { player.y = GROUND_Y - player.height; player.dy = 0; player.jumping = false; }
+    // 画面端で制限
     if (player.x < 0) player.x = 0;
     if (player.x + player.width > canvas.width) player.x = canvas.width - player.width;
 
+    // 足場との当たり判定
+    const groundY = getGroundYUnderPlayer();
+    if (groundY !== null) {
+        if (player.y + player.height >= groundY && player.dy >= 0) {
+            player.y = groundY - player.height;
+            player.dy = 0;
+            player.jumping = false;
+        }
+    } else {
+        // 足場がない（穴の上）で、画面下まで落ちたら即死
+        if (player.y > canvas.height) {
+            if (!gameOver) {
+                hp = 0;
+                updateHearts();
+                playSound('hit');
+                handleGameOver();
+            }
+        }
+    }
+
+    // 敵・アイテム生成
     if (frameCount >= nextEnemySpawn) spawnEnemy();
     if (frameCount >= nextItemSpawn) spawnItem();
 
+    // アイテム更新
     for (let i = 0; i < items.length; i++) {
-      let item = items[i]; item.x += item.dx;
-      if (item.x + item.width < 0) { items.splice(i, 1); i--; continue; }
+      let item = items[i]; 
+      item.x += item.dx;
+      if (item.x + item.width < 0) { 
+        items.splice(i, 1); 
+        i--; 
+        continue; 
+      }
       if (player.x < item.x + item.width && player.x + player.width > item.x && player.y < item.y + item.height && player.y + player.height > item.y) {
-        score += 50; scoreEl.innerText = score; items.splice(i, 1); i--; playSound('coin'); updateLevel();
+        score += 50; 
+        scoreEl.innerText = score; 
+        items.splice(i, 1); 
+        i--; 
+        playSound('coin'); 
+        updateLevel();
       }
     }
 
+    // 敵更新
     for (let i = 0; i < enemies.length; i++) {
-      let e = enemies[i]; e.x += e.dx;
-      if (e.type === 'flying') { e.angle += 0.1; e.y += Math.sin(e.angle) * 2; }
+      let e = enemies[i]; 
+      e.x += e.dx;
+      if (e.type === 'flying') { 
+        e.angle += 0.1; 
+        e.y += Math.sin(e.angle) * 2; 
+      }
       
-      if (e.x + e.width < 0) { enemies.splice(i, 1); i--; continue; }
+      if (e.x + e.width < 0) { 
+        enemies.splice(i, 1); 
+        i--; 
+        continue; 
+      }
+
+      // 衝突判定
       if (player.x < e.x + e.width && player.x + player.width > e.x && player.y < e.y + e.height && player.y + player.height > e.y) {
+        // 上から踏んだ
         if (player.dy > 0 && player.y + player.height < e.y + e.height * 0.6) {
-          enemies.splice(i, 1); i--; player.dy = -10; score += 100; scoreEl.innerText = score; playSound('coin'); updateLevel();
+          enemies.splice(i, 1); 
+          i--; 
+          player.dy = -10; 
+          score += 100; 
+          scoreEl.innerText = score; 
+          playSound('coin'); 
+          updateLevel();
         } else {
+          // ダメージ
           if (!isInvincible) {
-              hp--; updateHearts(); playSound('hit');
+              hp--; 
+              if (hp < 0) hp = 0;
+              updateHearts(); 
+              playSound('hit');
               if (hp <= 0) {
                 handleGameOver();
               } else {
-                isInvincible = true; invincibleTimer = 60; enemies.splice(i, 1); i--;
+                isInvincible = true; 
+                invincibleTimer = 60; 
+                enemies.splice(i, 1); 
+                i--;
               }
           }
         }
@@ -370,31 +535,49 @@ game_html = """
 
   function draw() {
     ctx.clearRect(0, 0, canvas.width, canvas.height);
-    ctx.fillStyle = '#87CEEB'; ctx.fillRect(0, 0, canvas.width, canvas.height);
+    ctx.fillStyle = '#87CEEB'; 
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
     
+    // 雲
     ctx.fillStyle = 'rgba(255, 255, 255, 0.7)';
-    for(let c of clouds) { ctx.beginPath(); ctx.arc(c.x, c.y, 30, 0, Math.PI * 2); ctx.arc(c.x + 25, c.y - 10, 35, 0, Math.PI * 2); ctx.arc(c.x + 50, c.y, 30, 0, Math.PI * 2); ctx.fill(); }
+    for(let c of clouds) { 
+        ctx.beginPath(); 
+        ctx.arc(c.x, c.y, 30, 0, Math.PI * 2); 
+        ctx.arc(c.x + 25, c.y - 10, 35, 0, Math.PI * 2); 
+        ctx.arc(c.x + 50, c.y, 30, 0, Math.PI * 2); 
+        ctx.fill(); 
+    }
      
-    ctx.fillStyle = '#654321'; ctx.fillRect(0, GROUND_Y, canvas.width, 40);
-    ctx.fillStyle = '#228B22'; ctx.fillRect(0, GROUND_Y, canvas.width, 10);
+    // 地形（セグメントごとに描画：土＋芝）
+    for (let seg of terrainSegments) {
+        ctx.fillStyle = '#654321';
+        ctx.fillRect(seg.x, seg.topY, seg.width, canvas.height - seg.topY);
+        ctx.fillStyle = '#228B22';
+        ctx.fillRect(seg.x, seg.topY, seg.width, 10);
+    }
 
+    // アイテム
     for (let item of items) drawObj(itemImg, item.x, item.y, item.width, item.height, 'gold');
     
-    // 👾 敵の描画（修正：画像切り替え処理）
+    // 敵の描画（強敵だけ画像差し替え）
     for (let e of enemies) {
         if (e.type === 'hard') {
-            // 強敵は新しい画像を描画
             drawObj(enemy2Img, e.x, e.y, e.width, e.height, 'purple');
         } else {
-            // 通常の敵
             drawObj(enemyImg, e.x, e.y, e.width, e.height, 'red');
         }
     }
 
+    // プレイヤー
     ctx.save();
     if (isInvincible && Math.floor(Date.now() / 100) % 2 === 0) ctx.globalAlpha = 0.5;
-    if (!facingRight) { ctx.translate(player.x + player.width, player.y); ctx.scale(-1, 1); drawObj(playerImg, 0, 0, player.width, player.height, 'blue'); } 
-    else { drawObj(playerImg, player.x, player.y, player.width, player.height, 'blue'); }
+    if (!facingRight) { 
+        ctx.translate(player.x + player.width, player.y); 
+        ctx.scale(-1, 1); 
+        drawObj(playerImg, 0, 0, player.width, player.height, 'blue'); 
+    } else { 
+        drawObj(playerImg, player.x, player.y, player.width, player.height, 'blue'); 
+    }
     ctx.restore();
   }
 
@@ -411,4 +594,4 @@ game_html = """
 </html>
 """
 
-components.html(game_html, height=500)
+components.html(game_html, height=550, scrolling=False)
