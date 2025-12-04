@@ -2,7 +2,11 @@ import streamlit as st
 import streamlit.components.v1 as components
 
 st.set_page_config(page_title="Action Game with Ranking & Animation", layout="wide")
-st.title("🎮 アクションゲーム：アニメーション実装版")
+
+# ★修正: タイトルテキストを削除し、画像を表示
+# st.title("🎮 アクションゲーム：アニメーション実装版") 
+st.image("https://raw.githubusercontent.com/m-fukuda-blip/game/main/gametitlefix.png", use_column_width=True)
+
 st.caption("機能：❤️ライフ制 / 🆙レベルアップ / ☁️背景 / 🔊効果音 / 🏆グローバルランキング / 🏃‍♂️アニメーション / 🎵加速するBGM / ✨アイテム効果 / 🧗‍♂️段差判定 / 💥コンボボーナス")
 st.write("操作方法: **W** ジャンプ / **A** 左移動 / **D** 右移動 / **R** リセット / **F** 全画面")
 
