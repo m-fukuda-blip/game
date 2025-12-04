@@ -164,6 +164,7 @@ game_html = f"""
   // ==========================================
   let isBgmPlaying = false;
   let bgmTimeout = null;
+  let activeOscillators = []; // ★追加: 鳴っている音を管理するリスト
   const BPM = 130;
   const beatTime = 60 / BPM;
 
@@ -194,6 +195,9 @@ game_html = f"""
 
     noise.connect(gain).connect(audioCtx.destination);
     noise.start(time);
+    
+    // ★追加: 停止用にリストに追加
+    activeOscillators.push(noise);
   }}
 
   function playNoteForBGM(freq, time, duration = beatTime){{
@@ -209,6 +213,9 @@ game_html = f"""
     osc.connect(gain).connect(audioCtx.destination);
     osc.start(time);
     osc.stop(time + duration);
+    
+    // ★追加: 停止用にリストに追加
+    activeOscillators.push(osc);
   }}
 
   function playBGMLoop(){{
@@ -234,10 +241,20 @@ game_html = f"""
     playBGMLoop();
   }}
 
-  // ★ BGM停止関数
+  // ★ BGM停止関数（修正版）
   function stopBGM() {{
     isBgmPlaying = false;
     if (bgmTimeout) clearTimeout(bgmTimeout);
+    
+    // ★重要: 予約済みの音をすべて強制停止する
+    activeOscillators.forEach(node => {{
+        try {{
+            node.stop();
+        }} catch(e) {{
+            // すでに再生終了している場合などは無視
+        }}
+    }});
+    activeOscillators = []; // リストを空にする
   }}
 
   // ★ ゲームオーバー音（残念な下降音）
