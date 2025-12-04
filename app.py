@@ -167,7 +167,6 @@ game_html = f"""
   const BPM = 130;
   const beatTime = 60 / BPM;
 
-  // メロディ（Cメジャー・数字譜対応）
   const melody = [
     5,5,6,5,3,-1,3,5,
     5,5,6,5,3,-1,3,2,
@@ -175,14 +174,12 @@ game_html = f"""
     6,5,3,3,-1,5,-1,-1
   ];
 
-  // 数字→周波数（ドレミ変換）
   const scaleToFreq = (num) => {{
     if(num < 0) return null;
     const scale = [261.63,293.66,329.63,349.23,392.00,440.00,493.88,523.25];
     return scale[num-1];
   }};
 
-  // ノイズ音（スネア・ハイハット用）
   function playNoiseForBGM(time, duration = 0.05, volume = 0.25){{
     if (audioCtx.state === 'suspended') audioCtx.resume();
     const buffer = audioCtx.createBuffer(1, audioCtx.sampleRate * duration, audioCtx.sampleRate);
@@ -199,7 +196,6 @@ game_html = f"""
     noise.start(time);
   }}
 
-  // Square波で音鳴らす
   function playNoteForBGM(freq, time, duration = beatTime){{
     if (audioCtx.state === 'suspended') audioCtx.resume();
     const osc = audioCtx.createOscillator();
@@ -207,7 +203,7 @@ game_html = f"""
     osc.frequency.value = freq;
 
     const gain = audioCtx.createGain();
-    gain.gain.setValueAtTime(0.15, time); // 音量を少し調整(0.25->0.15)
+    gain.gain.setValueAtTime(0.15, time); 
     gain.gain.exponentialRampToValueAtTime(0.01, time + duration);
 
     osc.connect(gain).connect(audioCtx.destination);
@@ -215,9 +211,8 @@ game_html = f"""
     osc.stop(time + duration);
   }}
 
-  // 曲再生
   function playBGMLoop(){{
-    if (!isBgmPlaying) return; // 停止指示があれば終了
+    if (!isBgmPlaying) return; 
     
     const start = audioCtx.currentTime;
     melody.forEach((note,i)=>{{
@@ -229,15 +224,45 @@ game_html = f"""
       }}
     }});
 
-    // ループ予約
     bgmTimeout = setTimeout(playBGMLoop, melody.length * beatTime * 1000);
   }}
 
   function startBGM() {{
-    if (isBgmPlaying) return; // 既に再生中なら無視
+    if (isBgmPlaying) return; 
     isBgmPlaying = true;
     if (audioCtx.state === 'suspended') audioCtx.resume();
     playBGMLoop();
+  }}
+
+  // ★ BGM停止関数
+  function stopBGM() {{
+    isBgmPlaying = false;
+    if (bgmTimeout) clearTimeout(bgmTimeout);
+  }}
+
+  // ★ ゲームオーバー音（残念な下降音）
+  function playGameOverSound() {{
+    if (audioCtx.state === 'suspended') audioCtx.resume();
+    const osc = audioCtx.createOscillator();
+    const gain = audioCtx.createGain();
+    
+    // 少しチープな音色にする
+    osc.type = 'sawtooth'; 
+    osc.connect(gain);
+    gain.connect(audioCtx.destination);
+    
+    const now = audioCtx.currentTime;
+    
+    // 周波数: 800Hz から 50Hz へ 0.8秒かけて急降下（残念感を表現）
+    osc.frequency.setValueAtTime(800, now);
+    osc.frequency.exponentialRampToValueAtTime(50, now + 0.8);
+    
+    // 音量: 少しずつ消える
+    gain.gain.setValueAtTime(0.3, now);
+    gain.gain.exponentialRampToValueAtTime(0.01, now + 0.8);
+    
+    osc.start(now);
+    osc.stop(now + 0.8);
   }}
 
   // ==========================================
@@ -410,6 +435,9 @@ game_html = f"""
   function handleGameOver() {{
     gameOver = true;
     player.state = 'dead'; 
+    stopBGM(); // ★BGM停止
+    playGameOverSound(); // ★ゲームオーバー音再生
+    
     overlay.style.display = 'block';
     finalScoreDisplay.innerText = "Final Score: " + score;
     nameInput.value = "";
