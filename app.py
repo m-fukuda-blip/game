@@ -3,7 +3,7 @@ import streamlit.components.v1 as components
 
 st.set_page_config(page_title="Action Game with Ranking & Animation", layout="wide")
 st.title("🎮 アクションゲーム：アニメーション実装版")
-st.caption("機能：❤️ライフ制 / 🆙レベルアップ / ☁️背景 / 🔊効果音 / 🏆グローバルランキング / 🏃‍♂️アニメーション / 🎵BGM / ✨アイテム効果")
+st.caption("機能：❤️ライフ制 / 🆙レベルアップ / ☁️背景 / 🔊効果音 / 🏆グローバルランキング / 🏃‍♂️アニメーション / 🎵BGM / ✨アイテム効果 / 🧗‍♂️段差判定 / 💥コンボボーナス")
 st.write("操作方法: **W** ジャンプ / **A** 左移動 / **D** 右移動 / **R** リセット / **F** 全画面")
 
 # ==========================================
@@ -290,7 +290,6 @@ game_html = f"""
   // ★ 雲画像 (cloud1.png ~ cloud4.png)
   const cloudImgWrappers = [];
   for(let i=1; i<=4; i++) {{ 
-      // ★修正: サイズ調整 170x120
       cloudImgWrappers.push(loadResized(`https://raw.githubusercontent.com/m-fukuda-blip/game/main/cloud${{i}}.png`, 170, 120)); 
   }}
 
@@ -318,11 +317,15 @@ game_html = f"""
   let superModeTimer = 0;
   let slowMode = false;        // 速度低下状態
   let slowModeTimer = 0;
+  
+  // ★ ボーナステキスト配列
+  let floatingTexts = [];
 
   const player = {{ 
       x: 100, y: 0, width: 40, height: 40, speed: 5, dx: 0, dy: 0, jumping: false,
       state: 'idle', animIndex: 0, animTimer: 0, 
-      animSpeedIdle: 15, animSpeedRun: 8, idlePingPong: 1
+      animSpeedIdle: 15, animSpeedRun: 8, idlePingPong: 1,
+      combo: 0 // ★コンボカウント追加
   }};
   
   let enemies = [];
@@ -482,25 +485,20 @@ game_html = f"""
     // ★ アイテム出現率の調整
     const r = Math.random();
     let type = 'coin';
-    
-    // 0 ~ 0.005: 無敵 (0.5%)
     if (r < 0.005) type = 'star';
-    // 0.005 ~ 0.035: 邪魔 (3.0%)
     else if (r < 0.035) type = 'trap';
-    // 0.035 ~ 0.045: 回復 (1.0%)
     else if (r < 0.045) type = 'heal';
-    // それ以外: コイン (95.5%)
     else type = 'coin';
 
     items.push({{ 
         x: canvas.width, y: Math.random() * 150 + 150, width: 30, height: 30, dx: -2,
         isCollected: false, animIndex: 0, animTimer: 0,
-        type: type // 種別を保存
+        type: type 
     }}); 
     nextItemSpawn = frameCount + Math.random() * 60 + 40; 
   }}
   
-  // ★ 雲の初期化 (画像ランダム)
+  // ★ 雲の初期化
   function initClouds() {{
     clouds = [];
     for(let i=0; i<5; i++) {{
@@ -508,12 +506,12 @@ game_html = f"""
             x: Math.random() * canvas.width, 
             y: Math.random() * 150, 
             speed: Math.random() * 0.5 + 0.2,
-            imgIndex: Math.floor(Math.random() * 4) // 0~3のランダムインデックス
+            imgIndex: Math.floor(Math.random() * 4) 
         }});
     }}
   }}
 
-  // ★ 雲の更新 (画面外に出たら画像もリセット)
+  // ★ 雲の更新
   function updateClouds() {{
     for(let c of clouds) {{
         c.x -= c.speed;
@@ -532,12 +530,13 @@ game_html = f"""
   function resetGame() {{
     player.x = 100; player.y = 0; player.dx = 0; player.dy = 0;
     player.state = 'idle'; player.animIndex = 0; player.animTimer = 0; player.idlePingPong = 1;
+    player.combo = 0; // コンボリセット
     score = 0; level = 1; gameSpeed = 1.0; hp = 3;
-    enemies = []; items = []; gameOver = false; frameCount = 0;
+    enemies = []; items = []; floatingTexts = []; // リセット
+    gameOver = false; frameCount = 0;
     isInvincible = false; nextEnemySpawn = 50; nextItemSpawn = 30;
     scoreEl.innerText = score; levelEl.innerText = level;
     
-    // ★ステータスリセット
     superMode = false; superModeTimer = 0;
     slowMode = false; slowModeTimer = 0;
     statusMsgEl.innerText = "";
@@ -597,10 +596,26 @@ game_html = f"""
     let currentSpeed = player.speed;
     if (slowMode) currentSpeed *= 0.5;
 
+    // ★ 修正1: 段差の壁判定（ジャンプしないと登れないようにする）
     if (player.state !== 'dead') {{
+        // キー入力による加速
         if (keys.right) player.dx = currentSpeed;
         else if (keys.left) player.dx = -currentSpeed;
         else player.dx *= FRICTION;
+
+        // 移動先の座標計算
+        let nextX = player.x + player.dx;
+        let checkX = player.dx > 0 ? nextX + player.width : nextX;
+        let nextGroundY = getGroundYAtX(checkX); // 移動先の地面高さ
+
+        if (nextGroundY !== null) {{
+            // 足元の高さより、移動先の地面が高い（数値が小さい）場合
+            // 許容範囲（5px）を超えて高い場合は、移動をブロック
+            if (player.y + player.height > nextGroundY + 5) {{
+                player.dx = 0; // 進めない
+                // nextXは更新しない（現在の位置を維持）
+            }}
+        }}
     }}
 
     player.x += player.dx; player.y += player.dy; player.dy += GRAVITY;
@@ -608,7 +623,13 @@ game_html = f"""
     if (player.x + player.width > canvas.width) player.x = canvas.width - player.width;
 
     const groundY = getGroundYUnderPlayer();
-    if (groundY !== null) {{ if (player.y + player.height >= groundY && player.dy >= 0) {{ player.y = groundY - player.height; player.dy = 0; player.jumping = false; }} }} 
+    if (groundY !== null) {{ 
+        if (player.y + player.height >= groundY && player.dy >= 0) {{ 
+            player.y = groundY - player.height; player.dy = 0; player.jumping = false; 
+            // ★着地したらコンボリセット
+            player.combo = 0;
+        }} 
+    }} 
     else {{ if (player.y > canvas.height) {{ if (!gameOver) {{ hp = 0; updateHearts(); playSound('hit'); handleGameOver(); }} }} }}
     
     updatePlayerAnimation();
@@ -617,21 +638,29 @@ game_html = f"""
     if (frameCount >= nextEnemySpawn) spawnEnemy();
     if (frameCount >= nextItemSpawn) spawnItem();
 
+    // ★ フローティングテキスト更新
+    for (let i = 0; i < floatingTexts.length; i++) {{
+        let ft = floatingTexts[i];
+        ft.y += ft.dy;
+        ft.life--;
+        if (ft.life <= 0) {{
+            floatingTexts.splice(i, 1);
+            i--;
+        }}
+    }}
+
     // ★ アイテム更新（効果の適用とアニメーション分岐）
     for (let i = 0; i < items.length; i++) {{ 
         let item = items[i]; 
         
         if (item.isCollected) {{
-            // 取得後の処理：タイプによって分岐
             if (item.type === 'coin') {{
-                // コイン：従来どおりアニメーション
                 item.animTimer++;
                 if (item.animTimer > 5) {{ item.animIndex++; item.animTimer = 0; }}
                 if (item.animIndex >= 3) {{ items.splice(i, 1); i--; }}
             }} else {{
-                // その他：点滅して消える（0.5秒程度）
                 item.animTimer++;
-                if (item.animTimer > 30) {{ // 約0.5秒
+                if (item.animTimer > 30) {{ 
                     items.splice(i, 1);
                     i--;
                 }}
@@ -642,21 +671,18 @@ game_html = f"""
             if (player.x < item.x + item.width && player.x + player.width > item.x && player.y < item.y + item.height && player.y + player.height > item.y) {{
                 item.isCollected = true; item.animIndex = 0; item.animTimer = 0;
                 
-                // アイテム効果発動
                 if (item.type === 'coin') {{
                     score += 50; playSound('coin');
                 }} else if (item.type === 'heal') {{
                     hp = 3; updateHearts(); playSound('heal');
                 }} else if (item.type === 'star') {{
-                    // ★ 修正3: 無敵取得時に邪魔効果を消去
-                    superMode = true; superModeTimer = 1800; // 30秒 (60fps)
+                    superMode = true; superModeTimer = 1800; 
                     isInvincible = true; invincibleTimer = 1800;
                     slowMode = false; slowModeTimer = 0;
                     playSound('powerup');
                 }} else if (item.type === 'trap') {{
-                    // ★ 修正1: 無敵中は邪魔アイテム無効
                     if (!superMode) {{
-                        slowMode = true; slowModeTimer = 600; // 10秒 (60fps)
+                        slowMode = true; slowModeTimer = 600; 
                         playSound('bad');
                     }}
                 }}
@@ -666,8 +692,8 @@ game_html = f"""
         }}
     }}
 
-    // ★ 修正2: 敵更新（敵重複時の判定改善）
-    let stompedThisFrame = false; // フレーム内での踏みつけ発生フラグ
+    // ★ 敵更新（無敵アタック判定）
+    let stompedThisFrame = false; 
     for (let i = 0; i < enemies.length; i++) {{ 
         let e = enemies[i]; e.x += e.dx;
         e.animTimer++; if (e.animTimer > 10) {{ e.animIndex = (e.animIndex + 1) % 2; e.animTimer = 0; }}
@@ -675,18 +701,35 @@ game_html = f"""
         if (e.x + e.width < 0) {{ enemies.splice(i, 1); i--; continue; }} 
 
         if (player.x < e.x + e.width && player.x + player.width > e.x && player.y < e.y + e.height && player.y + player.height > e.y) {{ 
-            // 踏み判定: 落下中かつ敵の上部にいる OR 既にこのフレームで敵を踏んだ OR スーパーモード
-            // 重なっている敵も連続で倒せるようになる
             const isStomp = (player.dy > 0 && player.y + player.height < e.y + e.height * 0.6) || stompedThisFrame || superMode;
 
             if (isStomp) {{ 
                 enemies.splice(i, 1); i--; 
                 
                 if (!superMode) {{
-                    player.dy = -10; // 通常の踏みつけジャンプ
-                    stompedThisFrame = true; // このフレームでは無敵（攻撃判定継続）にする
+                    player.dy = -10; 
+                    stompedThisFrame = true; 
                 }}
-                score += 100; scoreEl.innerText = score; playSound('coin'); updateLevel(); 
+                
+                // ★ 修正2: 連続踏みつけボーナス計算
+                player.combo++;
+                let multiplier = Math.pow(2, player.combo - 1); // 1, 2, 4, 8...
+                let bonusPoints = 100 * multiplier;
+                score += bonusPoints; 
+                scoreEl.innerText = score; 
+                playSound('coin'); updateLevel(); 
+
+                // ★ ボーナステキスト表示 (2倍以上で表示)
+                if (multiplier > 1) {{
+                    floatingTexts.push({{
+                        x: player.x,
+                        y: player.y - 20,
+                        text: "BONUS x" + multiplier,
+                        life: 60,
+                        dy: -1.5
+                    }});
+                }}
+
             }} else {{ 
                 if (!isInvincible) {{ 
                     hp--; if (hp < 0) hp = 0; updateHearts(); playSound('hit');
@@ -713,7 +756,6 @@ game_html = f"""
         if (wrapper && wrapper.ready && wrapper.img) {{
              ctx.drawImage(wrapper.img, c.x, c.y); 
         }} else {{
-             // フォールバック（白丸）
              ctx.fillStyle = 'rgba(255, 255, 255, 0.5)';
              ctx.beginPath(); ctx.arc(c.x, c.y, 30, 0, Math.PI*2); ctx.fill();
         }}
@@ -726,11 +768,9 @@ game_html = f"""
         if (item.isCollected) {{
             // 取得後
             if (item.type === 'coin') {{
-                // コイン：アニメーション
                 let effectWrapper = itemEffectAnim[item.animIndex];
                 if(effectWrapper) drawObj(effectWrapper, item.x, item.y, item.width, item.height, 'yellow');
             }} else {{
-                // ★ その他：点滅して消える（元の画像を表示しつつ点滅）
                 ctx.save();
                 if (Math.floor(Date.now() / 50) % 2 === 0) ctx.globalAlpha = 0.2;
                 else ctx.globalAlpha = 0.8;
@@ -742,7 +782,7 @@ game_html = f"""
                 ctx.restore();
             }}
         }} else {{
-            // 通常時：タイプに応じて画像を変える
+            // 通常時
             if (item.type === 'coin') drawObj(itemImgWrapper, item.x, item.y, item.width, item.height, 'gold');
             else if (item.type === 'heal') drawObj(capsuleImgWrapper, item.x, item.y, item.width, item.height, 'pink');
             else if (item.type === 'star') drawObj(mutekiImgWrapper, item.x, item.y, item.width, item.height, 'yellow');
@@ -757,15 +797,11 @@ game_html = f"""
     }}
 
     ctx.save();
-    // ★ プレイヤーのエフェクト
     if (superMode) {{
-        // スーパーモード：激しい点滅と金色オーラ
         if (Math.floor(Date.now() / 50) % 2 === 0) {{ ctx.globalAlpha = 0.8; ctx.filter = 'brightness(1.5) drop-shadow(0 0 5px gold)'; }}
     }} else if (slowMode) {{
-        // スローモード：紫色っぽく
         ctx.filter = 'hue-rotate(270deg)';
     }} else if (isInvincible) {{
-        // 通常のダメージ後無敵
         if (Math.floor(Date.now() / 100) % 2 === 0) ctx.globalAlpha = 0.5;
     }}
     
@@ -776,6 +812,16 @@ game_html = f"""
     if (!facingRight) {{ ctx.translate(player.x + player.width, player.y); ctx.scale(-1, 1); drawObj(currentWrapper, 0, 0, player.width, player.height, 'blue'); }} 
     else {{ drawObj(currentWrapper, player.x, player.y, player.width, player.height, 'blue'); }}
     ctx.restore();
+
+    // ★ ボーナステキスト描画
+    ctx.fillStyle = "yellow";
+    ctx.font = "bold 20px Courier New";
+    ctx.strokeStyle = "black";
+    ctx.lineWidth = 3;
+    for (let ft of floatingTexts) {{
+        ctx.strokeText(ft.text, ft.x, ft.y);
+        ctx.fillText(ft.text, ft.x, ft.y);
+    }}
   }}
 
   function loop() {{
