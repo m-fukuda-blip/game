@@ -287,6 +287,13 @@ game_html = f"""
   const itemEffectAnim = [];
   for(let i=1; i<=3; i++) {{ itemEffectAnim.push(loadResized(`https://raw.githubusercontent.com/m-fukuda-blip/game/main/ItemAction0${{i}}.png`, 30, 30)); }}
 
+  // ★ 雲画像 (cloud1.png ~ cloud4.png)
+  const cloudImgWrappers = [];
+  for(let i=1; i<=4; i++) {{ 
+      // ★修正: 元の雲のサイズ感に合わせて大きく (140x90)
+      cloudImgWrappers.push(loadResized(`https://raw.githubusercontent.com/m-fukuda-blip/game/main/cloud${{i}}.png`, 140, 90)); 
+  }}
+
   // ゲーム変数
   const GRAVITY = 0.6;
   const FRICTION = 0.8;
@@ -493,8 +500,31 @@ game_html = f"""
     nextItemSpawn = frameCount + Math.random() * 60 + 40; 
   }}
   
-  function initClouds() {{ clouds = []; for(let i=0; i<5; i++) clouds.push({{x: Math.random() * canvas.width, y: Math.random() * 150, speed: Math.random() * 0.5 + 0.2}}); }}
-  function updateClouds() {{ for(let c of clouds) {{ c.x -= c.speed; if(c.x < -100) {{ c.x = canvas.width; c.y = Math.random() * 150; }} }} }}
+  // ★ 雲の初期化 (画像ランダム)
+  function initClouds() {{
+    clouds = [];
+    for(let i=0; i<5; i++) {{
+        clouds.push({{
+            x: Math.random() * canvas.width, 
+            y: Math.random() * 150, 
+            speed: Math.random() * 0.5 + 0.2,
+            imgIndex: Math.floor(Math.random() * 4) // 0~3のランダムインデックス
+        }});
+    }}
+  }}
+
+  // ★ 雲の更新 (画面外に出たら画像もリセット)
+  function updateClouds() {{
+    for(let c of clouds) {{
+        c.x -= c.speed;
+        if(c.x < -150) {{ 
+            c.x = canvas.width; 
+            c.y = Math.random() * 150; 
+            c.imgIndex = Math.floor(Math.random() * 4);
+        }}
+    }}
+  }}
+
   function updateLevel() {{ const newLevel = Math.floor(score / 500) + 1; if (newLevel > level) {{ level = newLevel; gameSpeed = 1.0 + (level * 0.1); levelEl.innerText = level; if(hp < 3) {{ hp++; updateHearts(); }} }} }}
 
   function updateHearts() {{ let h = ""; for(let i=0; i<hp; i++) h += "❤️"; heartsEl.innerText = h; }}
@@ -665,7 +695,18 @@ game_html = f"""
     ctx.clearRect(0, 0, canvas.width, canvas.height);
     ctx.fillStyle = '#87CEEB'; ctx.fillRect(0, 0, canvas.width, canvas.height);
     
-    ctx.fillStyle = 'rgba(255, 255, 255, 0.7)'; for(let c of clouds) {{ ctx.beginPath(); ctx.arc(c.x, c.y, 30, 0, Math.PI * 2); ctx.arc(c.x + 25, c.y - 10, 35, 0, Math.PI * 2); ctx.arc(c.x + 50, c.y, 30, 0, Math.PI * 2); ctx.fill(); }}
+    // ★ 雲描画 (画像を使用)
+    for(let c of clouds) {{
+        let wrapper = cloudImgWrappers[c.imgIndex];
+        if (wrapper && wrapper.ready && wrapper.img) {{
+             ctx.drawImage(wrapper.img, c.x, c.y); 
+        }} else {{
+             // フォールバック（白丸）
+             ctx.fillStyle = 'rgba(255, 255, 255, 0.5)';
+             ctx.beginPath(); ctx.arc(c.x, c.y, 30, 0, Math.PI*2); ctx.fill();
+        }}
+    }}
+
     for (let seg of terrainSegments) {{ ctx.fillStyle = '#654321'; ctx.fillRect(seg.x, seg.topY, seg.width, canvas.height - seg.topY); ctx.fillStyle = '#228B22'; ctx.fillRect(seg.x, seg.topY, seg.width, 10); }}
     
     // ★ アイテム描画（種類別）
