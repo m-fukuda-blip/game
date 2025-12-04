@@ -22,7 +22,23 @@ game_html = f"""
 <head>
 <style>
   /* --- 基本スタイル --- */
-  body {{ margin: 0; overflow: hidden; background-color: #222; color: white; font-family: 'Courier New', sans-serif; display: flex; justify-content: center; align-items: center; height: 80vh; }}
+  body {{ 
+    margin: 0; 
+    overflow: hidden; 
+    background-color: #222; 
+    color: white; 
+    font-family: 'Courier New', sans-serif; 
+    display: flex; 
+    justify-content: center; 
+    align-items: center; 
+    height: 80vh;
+    
+    /* ★修正: スマホでの誤操作（選択・長押しメニュー・ズーム）を防止 */
+    user-select: none;
+    -webkit-user-select: none;   /* Safari/Chrome用 */
+    -webkit-touch-callout: none; /* iOS長押しメニュー防止 */
+    touch-action: none;          /* ピンチズームやスクロール防止 */
+  }}
   
   /* Canvas設定 */
   canvas {{ background-color: #87CEEB; border: 4px solid #fff; box-shadow: 0 0 20px rgba(0,0,0,0.5); }}
@@ -86,7 +102,12 @@ game_html = f"""
   
   /* --- 入力フォーム --- */
   #input-section {{ margin-bottom: 20px; display: none; }}
-  input[type="text"] {{ padding: 5px; font-size: 16px; width: 150px; text-align: center; }}
+  input[type="text"] {{ 
+    padding: 5px; font-size: 16px; width: 150px; text-align: center; 
+    /* ★修正: 入力欄だけは選択・編集可能に戻す */
+    user-select: text;
+    -webkit-user-select: text;
+  }}
   button {{ padding: 5px 15px; font-size: 16px; cursor: pointer; background: #f00; color: white; border: none; font-weight: bold; }}
   button:hover {{ background: #ff5555; }}
   button:disabled {{ background: #555; cursor: not-allowed; }}
@@ -219,6 +240,9 @@ game_html = f"""
 </div>
 
 <script>
+  // ★追加: 右クリックメニュー等の誤操作を防止
+  document.addEventListener('contextmenu', event => event.preventDefault());
+
   // ==========================================
   // 初期設定
   // ==========================================
