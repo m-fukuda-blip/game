@@ -133,13 +133,13 @@ game_html = f"""
   }};
   
   // 待機 (Taiki01 ~ 03)
-  for(let i=1; i<=3; i++) {{ let img = new Image(); img.src = `https://example.com/Taiki0${{i}}.png`; playerAnim.idle.push(img); }}
+  for(let i=1; i<=3; i++) {{ let img = new Image(); img.src = `https://github.com/m-fukuda-blip/game/blob/main/Taiki0${{i}}.png`; playerAnim.idle.push(img); }}
   // 走り (Run01 ~ 03)
-  for(let i=1; i<=3; i++) {{ let img = new Image(); img.src = `https://example.com/Run0${{i}}.png`; playerAnim.run.push(img); }}
+  for(let i=1; i<=3; i++) {{ let img = new Image(); img.src = `https://github.com/m-fukuda-blip/game/blob/main/Run0${{i}}.png`; playerAnim.run.push(img); }}
   // ジャンプ (Jump01 ~ 03)
-  for(let i=1; i<=3; i++) {{ let img = new Image(); img.src = `https://example.com/Jump0${{i}}.png`; playerAnim.jump.push(img); }}
+  for(let i=1; i<=3; i++) {{ let img = new Image(); img.src = `https://github.com/m-fukuda-blip/game/blob/main/Jump0${{i}}.png`; playerAnim.jump.push(img); }}
   // 死亡 (Dead)
-  playerAnim.dead = new Image(); playerAnim.dead.src = "https://example.com/Dead.png";
+  playerAnim.dead = new Image(); playerAnim.dead.src = "https://github.com/m-fukuda-blip/game/blob/main/Dead.png";
 
   // その他の画像（変更なし）
   const enemyImg = new Image(); enemyImg.src = "https://raw.githubusercontent.com/m-fukuda-blip/game/main/enemy.png";
