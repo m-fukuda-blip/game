@@ -27,11 +27,42 @@ game_html = f"""
   #ui-layer {{ position: absolute; top: 20px; left: 20px; font-size: 24px; font-weight: bold; color: black; pointer-events: none; text-shadow: 1px 1px 0 #fff;}}
   #hearts {{ color: red; font-size: 30px; }}
 
+  /* --- タイトル画面 --- */
+  #title-screen {{
+    position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+    display: flex; flex-direction: column; justify-content: center; align-items: center;
+    background: rgba(0,0,0,0.4); z-index: 10;
+    pointer-events: none;
+  }}
+  
+  /* ★修正: タイトル画像用のスタイル */
+  .title-img {{
+    max-width: 80%;  /* 画面幅の80%に収める */
+    height: auto;    /* アスペクト比を維持 */
+    margin-bottom: 20px;
+    opacity: 0;      /* 初期状態は透明 */
+  }}
+
+  .start-text {{
+    font-size: 40px; color: white; text-shadow: 2px 2px #000;
+    font-weight: bold; opacity: 0;
+  }}
+  
+  /* アニメーション定義 */
+  @keyframes slideUpFade {{
+    0% {{ opacity: 0; transform: translateY(100px); }}
+    100% {{ opacity: 1; transform: translateY(0); }}
+  }}
+  @keyframes blinkFade {{
+    0% {{ opacity: 0; }}
+    100% {{ opacity: 1; }}
+  }}
+
   /* --- ゲームオーバー・ランキング画面 --- */
   #overlay {{ 
     position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); 
     background: rgba(0, 0, 0, 0.85); border: 4px solid white; border-radius: 10px;
-    padding: 30px; text-align: center; color: white; display: none; width: 400px;
+    padding: 30px; text-align: center; color: white; display: none; width: 400px; z-index: 20;
   }}
   h2 {{ margin-top: 0; color: yellow; text-shadow: 2px 2px #f00; }}
   
@@ -72,6 +103,14 @@ game_html = f"""
 
 <!-- キャンバス -->
 <canvas id="gameCanvas" width="800" height="400"></canvas>
+
+<!-- タイトル画面 -->
+<div id="title-screen">
+    <!-- ★修正: テキストを画像に変更 -->
+    <!-- 画像URLは適宜修正してください -->
+    <img id="title-img" class="title-img" src="https://raw.githubusercontent.com/m-fukuda-blip/game/main/game_title.png" alt="GAME TITLE">
+    <div id="start-text" class="start-text">GAME START!</div>
+</div>
 
 <!-- オーバーレイ（ランキング＆ゲームオーバー） -->
 <div id="overlay">
@@ -116,6 +155,12 @@ game_html = f"""
   const submitBtn = document.getElementById('submit-btn');
   const loadingMsg = document.getElementById('loading-msg');
   const rankLoading = document.getElementById('rank-loading');
+
+  // タイトル画面要素
+  const titleScreen = document.getElementById('title-screen');
+  // ★修正: テキストではなく画像要素を取得
+  const titleImg = document.getElementById('title-img');
+  const startText = document.getElementById('start-text');
 
   // ==========================================
   // ★ 高負荷対策: 画像リサイズローダー
@@ -195,6 +240,7 @@ game_html = f"""
   let gameSpeed = 1.0;
   let hp = 3;
   let gameOver = false;
+  let isTitle = true; // ★タイトル画面フラグ
   let frameCount = 0;
   let nextEnemySpawn = 0;
   let nextItemSpawn = 0;
@@ -335,7 +381,7 @@ game_html = f"""
     if (e.code === 'KeyD') {{ keys.right = true; facingRight = true; }}
     if (e.code === 'KeyA') {{ keys.left = true; facingRight = false; }}
     if (e.code === 'KeyW') {{ 
-        if (!player.jumping && !gameOver) {{ 
+        if (!player.jumping && !gameOver && !isTitle) {{ // ★タイトル中はジャンプ不可
             player.jumping = true; 
             player.dy = -12; 
         }} 
@@ -374,9 +420,8 @@ game_html = f"""
     let type = Math.random() < 0.5 ? 'ground' : 'flying'; let speedBase = Math.random() * 3 + 2;
     if (score >= 2000 && Math.random() < 0.3) {{ 
         type = 'hard'; 
-        speedBase = 5; // ★修正: 強敵の速度を7から5へ (30%ダウン)
+        speedBase = 5; 
     }}
-    // ★ 敵にアニメーション用のプロパティを追加
     let enemy = {{ 
         x: canvas.width, y: 0, width: 35, height: 35, 
         dx: -(speedBase * gameSpeed), dy: 0, 
@@ -387,7 +432,6 @@ game_html = f"""
     enemies.push(enemy); nextEnemySpawn = frameCount + Math.random() * (Math.max(20, 60 - (level * 5))) + Math.max(20, 60 - (level * 5));
   }}
   function spawnItem() {{ 
-    // ★ アイテムにアニメーション/状態プロパティを追加
     items.push({{ 
         x: canvas.width, y: Math.random() * 150 + 150, width: 30, height: 30, dx: -2,
         isCollected: false, animIndex: 0, animTimer: 0 
@@ -410,6 +454,30 @@ game_html = f"""
     enemies = []; items = []; gameOver = false; frameCount = 0;
     isInvincible = false; nextEnemySpawn = 50; nextItemSpawn = 30;
     scoreEl.innerText = score; levelEl.innerText = level;
+    
+    // ★タイトル演出開始
+    isTitle = true;
+    titleScreen.style.display = 'flex';
+    
+    // ★修正: テキストではなく画像をアニメーション
+    titleImg.style.animation = 'none'; // アニメーションリセット
+    void titleImg.offsetWidth; // Reflow
+    titleImg.style.animation = 'slideUpFade 2s forwards';
+    
+    startText.style.opacity = '0';
+    startText.style.animation = 'none';
+
+    // 2秒後にGAME START表示
+    setTimeout(() => {{
+        startText.style.animation = 'blinkFade 0.5s forwards';
+        
+        // その1秒後にゲーム開始
+        setTimeout(() => {{
+            titleScreen.style.display = 'none';
+            isTitle = false;
+        }}, 1000);
+    }}, 2000);
+
     updateHearts();
     initClouds();
     generateCourse();
@@ -419,7 +487,6 @@ game_html = f"""
     player.y = gY - player.height;
 
     overlay.style.display = 'none';
-    // loop();  <-- 削除: ここで呼ぶとループが重複する
   }}
 
   function updatePlayerAnimation() {{
@@ -473,6 +540,12 @@ game_html = f"""
   function update() {{
     if (gameOver && player.state !== 'dead') return;
     if (player.state === 'dead') return;
+    
+    // ★タイトル画面中はゲーム更新を止める（雲だけ動かす）
+    if (isTitle) {{
+        updateClouds();
+        return;
+    }}
 
     frameCount++;
     updateClouds();
@@ -515,31 +588,26 @@ game_html = f"""
     if (frameCount >= nextEnemySpawn) spawnEnemy();
     if (frameCount >= nextItemSpawn) spawnItem();
 
-    // ★ アイテムの更新処理（取得後のエフェクト対応）
     for (let i = 0; i < items.length; i++) {{ 
         let item = items[i]; 
         
         if (item.isCollected) {{
-            // 取得済み：その場でアニメーション再生
             item.animTimer++;
-            if (item.animTimer > 5) {{ // エフェクト速度
+            if (item.animTimer > 5) {{ 
                 item.animIndex++;
                 item.animTimer = 0;
             }}
-            // アニメーションが終わったら削除
             if (item.animIndex >= 3) {{
                 items.splice(i, 1);
                 i--;
             }}
         }} else {{
-            // 通常時：移動と当たり判定
             item.x += item.dx;
             if (item.x + item.width < 0) {{ items.splice(i, 1); i--; continue; }} 
             
             if (player.x < item.x + item.width && player.x + player.width > item.x && 
                 player.y < item.y + item.height && player.y + player.height > item.y) {{
                 
-                // 取得！ -> 削除せずに状態を変更
                 item.isCollected = true;
                 item.animIndex = 0;
                 item.animTimer = 0;
@@ -551,14 +619,12 @@ game_html = f"""
         }}
     }}
 
-    // ★ 敵の更新処理（アニメーション更新を追加）
     for (let i = 0; i < enemies.length; i++) {{ 
         let e = enemies[i]; 
         e.x += e.dx;
         
-        // 敵のアニメーション更新
         e.animTimer++;
-        if (e.animTimer > 10) {{ // アニメーション速度
+        if (e.animTimer > 10) {{ 
             e.animIndex = (e.animIndex + 1) % 2;
             e.animTimer = 0;
         }}
@@ -595,34 +661,24 @@ game_html = f"""
     ctx.fillStyle = 'rgba(255, 255, 255, 0.7)'; for(let c of clouds) {{ ctx.beginPath(); ctx.arc(c.x, c.y, 30, 0, Math.PI * 2); ctx.arc(c.x + 25, c.y - 10, 35, 0, Math.PI * 2); ctx.arc(c.x + 50, c.y, 30, 0, Math.PI * 2); ctx.fill(); }}
     for (let seg of terrainSegments) {{ ctx.fillStyle = '#654321'; ctx.fillRect(seg.x, seg.topY, seg.width, canvas.height - seg.topY); ctx.fillStyle = '#228B22'; ctx.fillRect(seg.x, seg.topY, seg.width, 10); }}
     
-    // ★ アイテム描画（通常時とエフェクト時で切り替え）
     for (let item of items) {{
         if (item.isCollected) {{
-            // 取得エフェクト
             let effectWrapper = itemEffectAnim[item.animIndex];
-            // エフェクトがあれば描画、なければ空（安全策）
             if(effectWrapper) drawObj(effectWrapper, item.x, item.y, item.width, item.height, 'yellow');
         }} else {{
-            // 通常アイテム
             drawObj(itemImgWrapper, item.x, item.y, item.width, item.height, 'gold');
         }}
     }}
 
-    // ★ 敵描画（アニメーション対応）
     for (let e of enemies) {{ 
         let animWrapper = null;
         if (e.type === 'hard') {{
-            // 強敵
             animWrapper = enemy2Anim[e.animIndex];
-            // もし画像がまだロードされていなければ、安全策で配列の最初を使う
             if (!animWrapper) animWrapper = enemy2Anim[0];
-            
             drawObj(animWrapper, e.x, e.y, e.width, e.height, 'purple'); 
         }} else {{ 
-            // 通常敵
             animWrapper = enemyAnim[e.animIndex];
             if (!animWrapper) animWrapper = enemyAnim[0];
-            
             drawObj(animWrapper, e.x, e.y, e.width, e.height, 'red'); 
         }}
     }}
