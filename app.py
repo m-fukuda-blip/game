@@ -19,7 +19,12 @@ game_html = f"""
 <style>
   /* --- 基本スタイル --- */
   body {{ margin: 0; overflow: hidden; background-color: #222; color: white; font-family: 'Courier New', sans-serif; display: flex; justify-content: center; align-items: center; height: 80vh; }}
-  canvas {{ background-color: #87CEEB; border: 4px solid #fff; box-shadow: 0 0 20px rgba(0,0,0,0.5); image-rendering: pixelated; }}
+  
+  /* ★高解像度画像対応: 
+     image-rendering: pixelated; を削除しました。
+     これにより、1090pxの画像を40pxに縮小しても滑らかに表示されます。
+  */
+  canvas {{ background-color: #87CEEB; border: 4px solid #fff; box-shadow: 0 0 20px rgba(0,0,0,0.5); }}
   
   /* --- UIレイヤー --- */
   #ui-layer {{ position: absolute; top: 20px; left: 20px; font-size: 24px; font-weight: bold; color: black; pointer-events: none; text-shadow: 1px 1px 0 #fff;}}
