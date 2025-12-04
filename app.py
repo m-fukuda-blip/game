@@ -629,7 +629,7 @@ game_html = f"""
                 if (item.animTimer > 5) {{ item.animIndex++; item.animTimer = 0; }}
                 if (item.animIndex >= 3) {{ items.splice(i, 1); i--; }}
             }} else {{
-                // ★ その他：点滅して消える（0.5秒程度）
+                // その他：点滅して消える（0.5秒程度）
                 item.animTimer++;
                 if (item.animTimer > 30) {{ // 約0.5秒
                     items.splice(i, 1);
@@ -648,12 +648,17 @@ game_html = f"""
                 }} else if (item.type === 'heal') {{
                     hp = 3; updateHearts(); playSound('heal');
                 }} else if (item.type === 'star') {{
+                    // ★ 修正3: 無敵取得時に邪魔効果を消去
                     superMode = true; superModeTimer = 1800; // 30秒 (60fps)
                     isInvincible = true; invincibleTimer = 1800;
+                    slowMode = false; slowModeTimer = 0;
                     playSound('powerup');
                 }} else if (item.type === 'trap') {{
-                    slowMode = true; slowModeTimer = 600; // 10秒 (60fps)
-                    playSound('bad');
+                    // ★ 修正1: 無敵中は邪魔アイテム無効
+                    if (!superMode) {{
+                        slowMode = true; slowModeTimer = 600; // 10秒 (60fps)
+                        playSound('bad');
+                    }}
                 }}
                 
                 scoreEl.innerText = score; updateLevel(); 
@@ -661,7 +666,8 @@ game_html = f"""
         }}
     }}
 
-    // ★ 敵更新（無敵アタック判定）
+    // ★ 修正2: 敵更新（敵重複時の判定改善）
+    let stompedThisFrame = false; // フレーム内での踏みつけ発生フラグ
     for (let i = 0; i < enemies.length; i++) {{ 
         let e = enemies[i]; e.x += e.dx;
         e.animTimer++; if (e.animTimer > 10) {{ e.animIndex = (e.animIndex + 1) % 2; e.animTimer = 0; }}
@@ -669,11 +675,17 @@ game_html = f"""
         if (e.x + e.width < 0) {{ enemies.splice(i, 1); i--; continue; }} 
 
         if (player.x < e.x + e.width && player.x + player.width > e.x && player.y < e.y + e.height && player.y + player.height > e.y) {{ 
-            // 踏んだ、またはスーパー無敵モード中なら敵を倒す
-            if ((player.dy > 0 && player.y + player.height < e.y + e.height * 0.6) || superMode) {{ 
+            // 踏み判定: 落下中かつ敵の上部にいる OR 既にこのフレームで敵を踏んだ OR スーパーモード
+            // 重なっている敵も連続で倒せるようになる
+            const isStomp = (player.dy > 0 && player.y + player.height < e.y + e.height * 0.6) || stompedThisFrame || superMode;
+
+            if (isStomp) {{ 
                 enemies.splice(i, 1); i--; 
                 
-                if (!superMode) player.dy = -10; // 通常の踏みつけジャンプ
+                if (!superMode) {{
+                    player.dy = -10; // 通常の踏みつけジャンプ
+                    stompedThisFrame = true; // このフレームでは無敵（攻撃判定継続）にする
+                }}
                 score += 100; scoreEl.innerText = score; playSound('coin'); updateLevel(); 
             }} else {{ 
                 if (!isInvincible) {{ 
