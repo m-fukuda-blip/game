@@ -278,8 +278,7 @@ game_html = f"""
   for(let i=1; i<=2; i++) {{ enemyAnim.push(loadResized(`https://raw.githubusercontent.com/m-fukuda-blip/game/main/EnemyAction0${{i}}.png`, 35, 35)); }}
   for(let i=1; i<=2; i++) {{ enemy2Anim.push(loadResized(`https://raw.githubusercontent.com/m-fukuda-blip/game/main/Enemy2Action0${{i}}.png`, 35, 35)); }}
   
-  // ★ アイテム画像 (追加: capsule, muteki, jyama)
-  // ⚠️画像URLはGitHub等の正しいパスに置き換えてください
+  // ★ アイテム画像
   const itemImgWrapper = loadResized("https://raw.githubusercontent.com/m-fukuda-blip/game/main/coin.png", 30, 30);
   const capsuleImgWrapper = loadResized("https://raw.githubusercontent.com/m-fukuda-blip/game/main/capsule.png", 30, 30);
   const mutekiImgWrapper = loadResized("https://raw.githubusercontent.com/m-fukuda-blip/game/main/muteki.png", 30, 30);
@@ -473,13 +472,18 @@ game_html = f"""
   }}
   
   function spawnItem() {{ 
-    // ★ ランダムでアイテム種別を決定
+    // ★ アイテム出現率の調整
     const r = Math.random();
     let type = 'coin';
-    if (r < 0.65) type = 'coin';        // 65%
-    else if (r < 0.85) type = 'trap';   // 20% (邪魔)
-    else if (r < 0.95) type = 'heal';   // 10% (回復)
-    else type = 'star';                 // 5%  (無敵)
+    
+    // 0 ~ 0.005: 無敵 (0.5%)
+    if (r < 0.005) type = 'star';
+    // 0.005 ~ 0.035: 邪魔 (3.0%)
+    else if (r < 0.035) type = 'trap';
+    // 0.035 ~ 0.045: 回復 (1.0%)
+    else if (r < 0.045) type = 'heal';
+    // それ以外: コイン (95.5%)
+    else type = 'coin';
 
     items.push({{ 
         x: canvas.width, y: Math.random() * 150 + 150, width: 30, height: 30, dx: -2,
@@ -583,13 +587,25 @@ game_html = f"""
     if (frameCount >= nextEnemySpawn) spawnEnemy();
     if (frameCount >= nextItemSpawn) spawnItem();
 
-    // ★ アイテム更新（効果の適用）
+    // ★ アイテム更新（効果の適用とアニメーション分岐）
     for (let i = 0; i < items.length; i++) {{ 
         let item = items[i]; 
+        
         if (item.isCollected) {{
-            item.animTimer++;
-            if (item.animTimer > 5) {{ item.animIndex++; item.animTimer = 0; }}
-            if (item.animIndex >= 3) {{ items.splice(i, 1); i--; }}
+            // 取得後の処理：タイプによって分岐
+            if (item.type === 'coin') {{
+                // コイン：従来どおりアニメーション
+                item.animTimer++;
+                if (item.animTimer > 5) {{ item.animIndex++; item.animTimer = 0; }}
+                if (item.animIndex >= 3) {{ items.splice(i, 1); i--; }}
+            }} else {{
+                // ★ その他：点滅して消える（0.5秒程度）
+                item.animTimer++;
+                if (item.animTimer > 30) {{ // 約0.5秒
+                    items.splice(i, 1);
+                    i--;
+                }}
+            }}
         }} else {{
             item.x += item.dx;
             if (item.x + item.width < 0) {{ items.splice(i, 1); i--; continue; }} 
@@ -655,10 +671,25 @@ game_html = f"""
     // ★ アイテム描画（種類別）
     for (let item of items) {{
         if (item.isCollected) {{
-            let effectWrapper = itemEffectAnim[item.animIndex];
-            if(effectWrapper) drawObj(effectWrapper, item.x, item.y, item.width, item.height, 'yellow');
+            // 取得後
+            if (item.type === 'coin') {{
+                // コイン：アニメーション
+                let effectWrapper = itemEffectAnim[item.animIndex];
+                if(effectWrapper) drawObj(effectWrapper, item.x, item.y, item.width, item.height, 'yellow');
+            }} else {{
+                // ★ その他：点滅して消える（元の画像を表示しつつ点滅）
+                ctx.save();
+                if (Math.floor(Date.now() / 50) % 2 === 0) ctx.globalAlpha = 0.2;
+                else ctx.globalAlpha = 0.8;
+                
+                if (item.type === 'heal') drawObj(capsuleImgWrapper, item.x, item.y, item.width, item.height, 'pink');
+                else if (item.type === 'star') drawObj(mutekiImgWrapper, item.x, item.y, item.width, item.height, 'yellow');
+                else if (item.type === 'trap') drawObj(jyamaImgWrapper, item.x, item.y, item.width, item.height, 'purple');
+                
+                ctx.restore();
+            }}
         }} else {{
-            // タイプに応じて画像を変える
+            // 通常時：タイプに応じて画像を変える
             if (item.type === 'coin') drawObj(itemImgWrapper, item.x, item.y, item.width, item.height, 'gold');
             else if (item.type === 'heal') drawObj(capsuleImgWrapper, item.x, item.y, item.width, item.height, 'pink');
             else if (item.type === 'star') drawObj(mutekiImgWrapper, item.x, item.y, item.width, item.height, 'yellow');
