@@ -169,10 +169,22 @@ game_html = f"""
   // 死亡
   playerAnim.dead = loadResized("https://raw.githubusercontent.com/m-fukuda-blip/game/main/Dead.png", P_W, P_H);
 
-  // 敵・アイテム
-  const enemyImgWrapper = loadResized("https://raw.githubusercontent.com/m-fukuda-blip/game/main/enemy.png", 35, 35);
-  const enemy2ImgWrapper = loadResized("https://raw.githubusercontent.com/m-fukuda-blip/game/main/enemy2.png", 35, 35);
+  // ★ 敵・アイテムのアニメーション画像
+  // ⚠️ご自身の画像URLに書き換えてください
+  const enemyAnim = [];
+  const enemy2Anim = [];
+  const itemEffectAnim = [];
+
+  // 敵1 (EnemyAction01 ~ 02)
+  for(let i=1; i<=2; i++) {{ enemyAnim.push(loadResized(`https://raw.githubusercontent.com/m-fukuda-blip/game/main/EnemyAction0${{i}}.png`, 35, 35)); }}
+  // 敵2 (Enemy2Action01 ~ 02)
+  for(let i=1; i<=2; i++) {{ enemy2Anim.push(loadResized(`https://raw.githubusercontent.com/m-fukuda-blip/game/main/Enemy2Action0${{i}}.png`, 35, 35)); }}
+  
+  // アイテム (通常)
   const itemImgWrapper = loadResized("https://raw.githubusercontent.com/m-fukuda-blip/game/main/coin.png", 30, 30);
+  
+  // アイテム取得エフェクト (ItemAction01 ~ 03)
+  for(let i=1; i<=3; i++) {{ itemEffectAnim.push(loadResized(`https://raw.githubusercontent.com/m-fukuda-blip/game/main/ItemAction0${{i}}.png`, 30, 30)); }}
 
   // ゲーム変数
   const GRAVITY = 0.6;
@@ -351,11 +363,24 @@ game_html = f"""
   function spawnEnemy() {{
     let type = Math.random() < 0.5 ? 'ground' : 'flying'; let speedBase = Math.random() * 3 + 2;
     if (score >= 2000 && Math.random() < 0.3) {{ type = 'hard'; speedBase = 7; }}
-    let enemy = {{ x: canvas.width, y: 0, width: 35, height: 35, dx: -(speedBase * gameSpeed), dy: 0, type: type, angle: 0 }};
+    // ★ 敵にアニメーション用のプロパティを追加
+    let enemy = {{ 
+        x: canvas.width, y: 0, width: 35, height: 35, 
+        dx: -(speedBase * gameSpeed), dy: 0, 
+        type: type, angle: 0,
+        animIndex: 0, animTimer: 0 
+    }};
     if (type === 'ground' || type === 'hard') {{ const gY = getGroundYAtX(enemy.x); if (gY !== null) enemy.y = gY - enemy.height; else {{ enemy.type = 'flying'; enemy.y = Math.random() * 80 + 200; }} }} else enemy.y = Math.random() * 80 + 200;
     enemies.push(enemy); nextEnemySpawn = frameCount + Math.random() * (Math.max(20, 60 - (level * 5))) + Math.max(20, 60 - (level * 5));
   }}
-  function spawnItem() {{ items.push({{ x: canvas.width, y: Math.random() * 150 + 150, width: 30, height: 30, dx: -2 }}); nextItemSpawn = frameCount + Math.random() * 60 + 40; }}
+  function spawnItem() {{ 
+    // ★ アイテムにアニメーション/状態プロパティを追加
+    items.push({{ 
+        x: canvas.width, y: Math.random() * 150 + 150, width: 30, height: 30, dx: -2,
+        isCollected: false, animIndex: 0, animTimer: 0 
+    }}); 
+    nextItemSpawn = frameCount + Math.random() * 60 + 40; 
+  }}
   function initClouds() {{ clouds = []; for(let i=0; i<5; i++) clouds.push({{x: Math.random() * canvas.width, y: Math.random() * 150, speed: Math.random() * 0.5 + 0.2}}); }}
   function updateClouds() {{ for(let c of clouds) {{ c.x -= c.speed; if(c.x < -100) {{ c.x = canvas.width; c.y = Math.random() * 150; }} }} }}
   function updateLevel() {{ const newLevel = Math.floor(score / 500) + 1; if (newLevel > level) {{ level = newLevel; gameSpeed = 1.0 + (level * 0.1); levelEl.innerText = level; if(hp < 3) {{ hp++; updateHearts(); }} }} }}
@@ -385,20 +410,18 @@ game_html = f"""
   }}
 
   function updatePlayerAnimation() {{
-    // ★ 状態変化の検知用
     const prevState = player.state;
 
     if (hp <= 0) {{
         player.state = 'dead';
     }} else if (player.jumping) {{
-        player.state = 'jump'; // ★修正: jumping -> jump
+        player.state = 'jump';
     }} else if (keys.right || keys.left) {{
-        player.state = 'run';  // ★修正: running -> run
+        player.state = 'run';
     }} else {{
         player.state = 'idle';
     }}
 
-    // ★ 状態が変わったらタイマーとインデックスをリセット（滑らかな動きのため）
     if (player.state !== prevState) {{
         player.animTimer = 0;
         player.animIndex = 0;
@@ -416,13 +439,13 @@ game_html = f"""
                 player.animTimer = 0;
             }}
             break;
-        case 'run': // ★修正: running -> run
+        case 'run': 
             if (player.animTimer > player.animSpeedRun) {{
                 player.animIndex = (player.animIndex + 1) % 3;
                 player.animTimer = 0;
             }}
             break;
-        case 'jump': // ★修正: jumping -> jump
+        case 'jump': 
             if (player.dy < -5) player.animIndex = 0;
             else if (player.dy < 0) player.animIndex = 1;
             else if (player.dy < 5) player.animIndex = 2;
@@ -478,11 +501,71 @@ game_html = f"""
 
     if (frameCount >= nextEnemySpawn) spawnEnemy();
     if (frameCount >= nextItemSpawn) spawnItem();
-    for (let i = 0; i < items.length; i++) {{ let item = items[i]; item.x += item.dx; if (item.x + item.width < 0) {{ items.splice(i, 1); i--; continue; }} if (player.x < item.x + item.width && player.x + player.width > item.x && player.y < item.y + item.height && player.y + player.height > item.y) {{ score += 50; scoreEl.innerText = score; items.splice(i, 1); i--; updateLevel(); }} }}
-    for (let i = 0; i < enemies.length; i++) {{ let e = enemies[i]; e.x += e.dx; if (e.type === 'flying') {{ e.angle += 0.1; e.y += Math.sin(e.angle) * 2; }} if (e.x + e.width < 0) {{ enemies.splice(i, 1); i--; continue; }} if (player.x < e.x + e.width && player.x + player.width > e.x && player.y < e.y + e.height && player.y + player.height > e.y) {{ if (player.dy > 0 && player.y + player.height < e.y + e.height * 0.6) {{ enemies.splice(i, 1); i--; player.dy = -10; score += 100; scoreEl.innerText = score; updateLevel(); }} else {{ if (!isInvincible) {{ hp--; if (hp < 0) hp = 0; updateHearts(); if (hp <= 0) handleGameOver(); else {{ isInvincible = true; invincibleTimer = 60; enemies.splice(i, 1); i--; }} }} }} }} }}
+
+    // ★ アイテムの更新処理（取得後のエフェクト対応）
+    for (let i = 0; i < items.length; i++) {{ 
+        let item = items[i]; 
+        
+        if (item.isCollected) {{
+            // 取得済み：その場でアニメーション再生
+            item.animTimer++;
+            if (item.animTimer > 5) {{ // エフェクト速度
+                item.animIndex++;
+                item.animTimer = 0;
+            }}
+            // アニメーションが終わったら削除
+            if (item.animIndex >= 3) {{
+                items.splice(i, 1);
+                i--;
+            }}
+        }} else {{
+            // 通常時：移動と当たり判定
+            item.x += item.dx;
+            if (item.x + item.width < 0) {{ items.splice(i, 1); i--; continue; }} 
+            
+            if (player.x < item.x + item.width && player.x + player.width > item.x && 
+                player.y < item.y + item.height && player.y + player.height > item.y) {{
+                
+                // 取得！ -> 削除せずに状態を変更
+                item.isCollected = true;
+                item.animIndex = 0;
+                item.animTimer = 0;
+                
+                score += 50; 
+                scoreEl.innerText = score; 
+                updateLevel(); 
+            }}
+        }}
+    }}
+
+    // ★ 敵の更新処理（アニメーション更新を追加）
+    for (let i = 0; i < enemies.length; i++) {{ 
+        let e = enemies[i]; 
+        e.x += e.dx;
+        
+        // 敵のアニメーション更新
+        e.animTimer++;
+        if (e.animTimer > 10) {{ // アニメーション速度
+            e.animIndex = (e.animIndex + 1) % 2;
+            e.animTimer = 0;
+        }}
+
+        if (e.type === 'flying') {{ e.angle += 0.1; e.y += Math.sin(e.angle) * 2; }} 
+        if (e.x + e.width < 0) {{ enemies.splice(i, 1); i--; continue; }} 
+
+        if (player.x < e.x + e.width && player.x + player.width > e.x && player.y < e.y + e.height && player.y + player.height > e.y) {{ 
+            if (player.dy > 0 && player.y + player.height < e.y + e.height * 0.6) {{ 
+                enemies.splice(i, 1); i--; player.dy = -10; score += 100; scoreEl.innerText = score; updateLevel(); 
+            }} else {{ 
+                if (!isInvincible) {{ 
+                    hp--; if (hp < 0) hp = 0; updateHearts(); if (hp <= 0) handleGameOver(); 
+                    else {{ isInvincible = true; invincibleTimer = 60; enemies.splice(i, 1); i--; }} 
+                }} 
+            }} 
+        }} 
+    }}
   }}
 
-  // ★ 修正: ラッパーオブジェクト(wrapper)を受け取り、準備ができていたら描画する
   function drawObj(wrapper, x, y, w, h, fallbackColor) {{
     if (wrapper && wrapper.ready && wrapper.img) {{
         ctx.drawImage(wrapper.img, x, y, w, h);
@@ -499,10 +582,36 @@ game_html = f"""
     ctx.fillStyle = 'rgba(255, 255, 255, 0.7)'; for(let c of clouds) {{ ctx.beginPath(); ctx.arc(c.x, c.y, 30, 0, Math.PI * 2); ctx.arc(c.x + 25, c.y - 10, 35, 0, Math.PI * 2); ctx.arc(c.x + 50, c.y, 30, 0, Math.PI * 2); ctx.fill(); }}
     for (let seg of terrainSegments) {{ ctx.fillStyle = '#654321'; ctx.fillRect(seg.x, seg.topY, seg.width, canvas.height - seg.topY); ctx.fillStyle = '#228B22'; ctx.fillRect(seg.x, seg.topY, seg.width, 10); }}
     
-    for (let item of items) drawObj(itemImgWrapper, item.x, item.y, item.width, item.height, 'gold');
+    // ★ アイテム描画（通常時とエフェクト時で切り替え）
+    for (let item of items) {{
+        if (item.isCollected) {{
+            // 取得エフェクト
+            let effectWrapper = itemEffectAnim[item.animIndex];
+            // エフェクトがあれば描画、なければ空（安全策）
+            if(effectWrapper) drawObj(effectWrapper, item.x, item.y, item.width, item.height, 'yellow');
+        }} else {{
+            // 通常アイテム
+            drawObj(itemImgWrapper, item.x, item.y, item.width, item.height, 'gold');
+        }}
+    }}
+
+    // ★ 敵描画（アニメーション対応）
     for (let e of enemies) {{ 
-        if (e.type === 'hard') drawObj(enemy2ImgWrapper, e.x, e.y, e.width, e.height, 'purple'); 
-        else drawObj(enemyImgWrapper, e.x, e.y, e.width, e.height, 'red'); 
+        let animWrapper = null;
+        if (e.type === 'hard') {{
+            // 強敵
+            animWrapper = enemy2Anim[e.animIndex];
+            // もし画像がまだロードされていなければ、安全策で配列の最初を使う
+            if (!animWrapper) animWrapper = enemy2Anim[0];
+            
+            drawObj(animWrapper, e.x, e.y, e.width, e.height, 'purple'); 
+        }} else {{ 
+            // 通常敵
+            animWrapper = enemyAnim[e.animIndex];
+            if (!animWrapper) animWrapper = enemyAnim[0];
+            
+            drawObj(animWrapper, e.x, e.y, e.width, e.height, 'red'); 
+        }}
     }}
 
     ctx.save();
