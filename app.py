@@ -20,10 +20,7 @@ game_html = f"""
   /* --- 基本スタイル --- */
   body {{ margin: 0; overflow: hidden; background-color: #222; color: white; font-family: 'Courier New', sans-serif; display: flex; justify-content: center; align-items: center; height: 80vh; }}
   
-  /* ★高解像度画像対応: 
-     image-rendering: pixelated; を削除しました。
-     これにより、1090pxの画像を40pxに縮小しても滑らかに表示されます。
-  */
+  /* Canvas設定 */
   canvas {{ background-color: #87CEEB; border: 4px solid #fff; box-shadow: 0 0 20px rgba(0,0,0,0.5); }}
   
   /* --- UIレイヤー --- */
@@ -111,7 +108,6 @@ game_html = f"""
   const levelEl = document.getElementById('level');
   const heartsEl = document.getElementById('hearts');
   
-  // UI要素
   const overlay = document.getElementById('overlay');
   const inputSection = document.getElementById('input-section');
   const rankingBody = document.getElementById('ranking-body');
@@ -122,9 +118,46 @@ game_html = f"""
   const rankLoading = document.getElementById('rank-loading');
 
   // ==========================================
-  // ★ アニメーション画像の読み込み
+  // ★ 高負荷対策: 画像リサイズローダー
   // ==========================================
-  // ⚠️注意⚠️ 以下のURLをご自身の画像URLに書き換えてください！
+  // 1000px超えの画像をそのまま描画すると重いため、
+  // 読み込み時に指定サイズ(w, h)に縮小したCanvasをメモリに作成して使う
+  function loadResized(src, w, h) {{
+      const wrapper = {{ 
+          img: null,  // ここにリサイズ後のCanvasが入る
+          ready: false, 
+          error: false 
+      }};
+      const img = new Image();
+      img.crossOrigin = "Anonymous"; // 外部画像用
+      img.src = src;
+      
+      img.onload = () => {{
+          // オフスクリーンCanvasを作成して縮小描画
+          const offCanvas = document.createElement('canvas');
+          offCanvas.width = w;
+          offCanvas.height = h;
+          const offCtx = offCanvas.getContext('2d');
+          offCtx.drawImage(img, 0, 0, w, h);
+          
+          wrapper.img = offCanvas; // 画像の代わりにCanvasをセット
+          wrapper.ready = true;
+      }};
+      
+      img.onerror = () => {{
+          wrapper.error = true;
+      }};
+      
+      return wrapper;
+  }}
+
+  // ==========================================
+  // 画像読み込み (リサイズ関数を使用)
+  // ==========================================
+  // ⚠️以下のURLをご自身の画像URLに書き換えてください
+  const P_W = 40; // プレイヤー幅
+  const P_H = 40; // プレイヤー高さ
+  
   const playerAnim = {{
       idle: [],
       run: [],
@@ -133,18 +166,18 @@ game_html = f"""
   }};
   
   // 待機 (Taiki01 ~ 03)
-  for(let i=1; i<=3; i++) {{ let img = new Image(); img.src = `https://github.com/m-fukuda-blip/game/blob/main/Taiki0${{i}}.png`; playerAnim.idle.push(img); }}
+  for(let i=1; i<=3; i++) {{ playerAnim.idle.push(loadResized(`https://raw.githubusercontent.com/m-fukuda-blip/game/main/Taiki0${{i}}.png`, P_W, P_H)); }}
   // 走り (Run01 ~ 03)
-  for(let i=1; i<=3; i++) {{ let img = new Image(); img.src = `https://github.com/m-fukuda-blip/game/blob/main/Run0${{i}}.png`; playerAnim.run.push(img); }}
+  for(let i=1; i<=3; i++) {{ playerAnim.run.push(loadResized(`https://raw.githubusercontent.com/m-fukuda-blip/game/main/Run0${{i}}.png`, P_W, P_H)); }}
   // ジャンプ (Jump01 ~ 03)
-  for(let i=1; i<=3; i++) {{ let img = new Image(); img.src = `https://github.com/m-fukuda-blip/game/blob/main/Jump0${{i}}.png`; playerAnim.jump.push(img); }}
-  // 死亡 (Dead)
-  playerAnim.dead = new Image(); playerAnim.dead.src = "https://github.com/m-fukuda-blip/game/blob/main/Dead.png";
+  for(let i=1; i<=3; i++) {{ playerAnim.jump.push(loadResized(`https://raw.githubusercontent.com/m-fukuda-blip/game/main/Jump0${{i}}.png`, P_W, P_H)); }}
+  // 死亡
+  playerAnim.dead = loadResized("https://raw.githubusercontent.com/m-fukuda-blip/game/main/Dead.png", P_W, P_H);
 
-  // その他の画像（変更なし）
-  const enemyImg = new Image(); enemyImg.src = "https://raw.githubusercontent.com/m-fukuda-blip/game/main/enemy.png";
-  const enemy2Img = new Image(); enemy2Img.src = "https://raw.githubusercontent.com/m-fukuda-blip/game/main/enemy2.png";
-  const itemImg = new Image(); itemImg.src = "https://raw.githubusercontent.com/m-fukuda-blip/game/main/coin.png";
+  // 敵・アイテムもリサイズして軽量化
+  const enemyImgWrapper = loadResized("https://raw.githubusercontent.com/m-fukuda-blip/game/main/enemy.png", 35, 35);
+  const enemy2ImgWrapper = loadResized("https://raw.githubusercontent.com/m-fukuda-blip/game/main/enemy2.png", 35, 35);
+  const itemImgWrapper = loadResized("https://raw.githubusercontent.com/m-fukuda-blip/game/main/coin.png", 30, 30);
 
   // ゲーム変数
   const GRAVITY = 0.6;
@@ -164,15 +197,10 @@ game_html = f"""
   let invincibleTimer = 0;
   let terrainSegments = [];
   
-  // ★ プレイヤーオブジェクトにアニメーション情報を追加
   const player = {{ 
       x: 100, y: 0, width: 40, height: 40, speed: 5, dx: 0, dy: 0, jumping: false,
-      state: 'idle',       // idle, running, jumping, dead
-      animIndex: 0,        // 現在のアニメーションフレーム
-      animTimer: 0,        // フレーム切り替えタイマー
-      animSpeedIdle: 15,   // 待機アニメの速度（大きいほど遅い）
-      animSpeedRun: 8,     // 走りアニメの速度
-      idlePingPong: 1      // 待機の往復用 (1 or -1)
+      state: 'idle', animIndex: 0, animTimer: 0, 
+      animSpeedIdle: 15, animSpeedRun: 8, idlePingPong: 1
   }};
   
   let enemies = [];
@@ -183,7 +211,7 @@ game_html = f"""
   const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
 
   // ==========================================
-  // API設定 (GAS) - 変更なし
+  // API設定 (GAS)
   // ==========================================
   const API_URL = "{GAS_API_URL}";
   let globalRankings = [];
@@ -251,7 +279,6 @@ game_html = f"""
 
   function handleGameOver() {{
     gameOver = true;
-    // ★死亡状態にセット
     player.state = 'dead'; 
     overlay.style.display = 'block';
     finalScoreDisplay.innerText = "Final Score: " + score;
@@ -277,7 +304,7 @@ game_html = f"""
   // ==========================================
   
   function playSound(type) {{
-    // 省略（変更なし）
+      // 省略
   }}
 
   document.addEventListener('keydown', (e) => {{
@@ -285,7 +312,6 @@ game_html = f"""
         if (e.key === 'Enter' && !submitBtn.disabled) submitScore();
         return;
     }}
-    // ★死亡時は操作を受け付けない
     if (player.state === 'dead' && e.code !== 'KeyR') return;
 
     if (['KeyW', 'KeyA', 'KeyD', 'KeyR'].includes(e.code)) {{ e.preventDefault(); }}
@@ -295,7 +321,6 @@ game_html = f"""
         if (!player.jumping && !gameOver) {{ 
             player.jumping = true; 
             player.dy = -12; 
-            // playSound('jump'); // 音は一旦OFF
         }} 
     }}
     if (e.code === 'KeyR' && gameOver) resetGame();
@@ -306,8 +331,6 @@ game_html = f"""
     if (e.code === 'KeyA') keys.left = false;
   }});
 
-  // generateCourse, getGroundYUnderPlayer, getGroundYAtX, spawnEnemy, spawnItem, initClouds, updateClouds, updateLevel
-  // などの関数は変更なしのため省略（元のコードを維持）
   function generateCourse() {{
     terrainSegments = [];
     let x = 0; let prevLevel = 0; const SEG_HEIGHTS = [BASE_GROUND_Y, BASE_GROUND_Y - 40, BASE_GROUND_Y - 80];
@@ -349,7 +372,6 @@ game_html = f"""
 
   function resetGame() {{
     player.x = 100; player.y = 0; player.dx = 0; player.dy = 0;
-    // ★初期状態をセット
     player.state = 'idle'; player.animIndex = 0; player.animTimer = 0; player.idlePingPong = 1;
     score = 0; level = 1; gameSpeed = 1.0; hp = 3;
     enemies = []; items = []; gameOver = false; frameCount = 0;
@@ -367,11 +389,7 @@ game_html = f"""
     loop();
   }}
 
-  // ==========================================
-  // ★ アニメーション更新ロジック
-  // ==========================================
   function updatePlayerAnimation() {{
-    // 1. 状態の決定
     if (hp <= 0) {{
         player.state = 'dead';
     }} else if (player.jumping) {{
@@ -382,57 +400,43 @@ game_html = f"""
         player.state = 'idle';
     }}
 
-    // 2. 状態ごとのフレーム更新
     player.animTimer++;
 
     switch (player.state) {{
         case 'idle':
-            // Taiki01 -> 02 -> 03 -> 02 -> 01 の往復ループ
             if (player.animTimer > player.animSpeedIdle) {{
                 player.animIndex += player.idlePingPong;
-                if (player.animIndex >= 2) player.idlePingPong = -1; // 03まで行ったら折り返し
-                if (player.animIndex <= 0) player.idlePingPong = 1;  // 01まで戻ったら折り返し
+                if (player.animIndex >= 2) player.idlePingPong = -1;
+                if (player.animIndex <= 0) player.idlePingPong = 1;
                 player.animTimer = 0;
             }}
             break;
-            
         case 'running':
-            // Run01 -> 02 -> 03 -> 01 のループ
             if (player.animTimer > player.animSpeedRun) {{
                 player.animIndex = (player.animIndex + 1) % 3;
                 player.animTimer = 0;
             }}
             break;
-            
         case 'jumping':
-            // 上昇速度(dy)に応じてフレームを切り替える（自然な見た目にするため）
-            if (player.dy < -5) {{
-                player.animIndex = 0; // Jump01: 上昇開始（勢いよく）
-            }} else if (player.dy < 0) {{
-                player.animIndex = 1; // Jump02: 上昇中（ふわっと）
-            }} else if (player.dy < 5) {{
-                player.animIndex = 2; // Jump03: 最高点付近
-            }} else {{
-                player.animIndex = 1; // Jump02: 下降中（ふわっと）
-            }}
-            // 着地(Taiki01)は、stateがidle/runningに戻ることで自然に表現される
+            if (player.dy < -5) player.animIndex = 0;
+            else if (player.dy < 0) player.animIndex = 1;
+            else if (player.dy < 5) player.animIndex = 2;
+            else player.animIndex = 1;
             break;
-            
         case 'dead':
-            player.animIndex = 0; // Dead画像に固定
+            player.animIndex = 0;
             break;
     }}
   }}
 
   function update() {{
-    if (gameOver && player.state !== 'dead') return; // 死亡アニメ中は少し動かすかも
-    if (player.state === 'dead') return; // 完全に停止
+    if (gameOver && player.state !== 'dead') return;
+    if (player.state === 'dead') return;
 
     frameCount++;
     updateClouds();
     if (isInvincible) {{ invincibleTimer--; if (invincibleTimer <= 0) isInvincible = false; }}
 
-    // ★移動入力（死亡時は無効）
     if (player.state !== 'dead') {{
         if (keys.right) player.dx = player.speed;
         else if (keys.left) player.dx = -player.speed;
@@ -458,58 +462,61 @@ game_html = f"""
             if (!gameOver) {{
                 hp = 0;
                 updateHearts();
-                // playSound('hit');
                 handleGameOver();
             }}
         }}
     }}
     
-    // ★アニメーションを更新
     updatePlayerAnimation();
 
-    if (gameOver) return; // ゲームオーバーなら敵・アイテムの更新はしない
+    if (gameOver) return;
 
-    // 敵・アイテム生成と更新処理（省略・変更なし）
     if (frameCount >= nextEnemySpawn) spawnEnemy();
     if (frameCount >= nextItemSpawn) spawnItem();
     for (let i = 0; i < items.length; i++) {{ let item = items[i]; item.x += item.dx; if (item.x + item.width < 0) {{ items.splice(i, 1); i--; continue; }} if (player.x < item.x + item.width && player.x + player.width > item.x && player.y < item.y + item.height && player.y + player.height > item.y) {{ score += 50; scoreEl.innerText = score; items.splice(i, 1); i--; updateLevel(); }} }}
     for (let i = 0; i < enemies.length; i++) {{ let e = enemies[i]; e.x += e.dx; if (e.type === 'flying') {{ e.angle += 0.1; e.y += Math.sin(e.angle) * 2; }} if (e.x + e.width < 0) {{ enemies.splice(i, 1); i--; continue; }} if (player.x < e.x + e.width && player.x + player.width > e.x && player.y < e.y + e.height && player.y + player.height > e.y) {{ if (player.dy > 0 && player.y + player.height < e.y + e.height * 0.6) {{ enemies.splice(i, 1); i--; player.dy = -10; score += 100; scoreEl.innerText = score; updateLevel(); }} else {{ if (!isInvincible) {{ hp--; if (hp < 0) hp = 0; updateHearts(); if (hp <= 0) handleGameOver(); else {{ isInvincible = true; invincibleTimer = 60; enemies.splice(i, 1); i--; }} }} }} }} }}
   }}
 
-  function drawObj(img, x, y, w, h, fallbackColor) {{
-    if (img && img.complete && img.naturalHeight !== 0) ctx.drawImage(img, x, y, w, h);
-    else {{ ctx.fillStyle = fallbackColor; ctx.fillRect(x, y, w, h); }}
+  // ★ 修正: ラッパーオブジェクト(wrapper)を受け取り、準備ができていたら描画する
+  function drawObj(wrapper, x, y, w, h, fallbackColor) {{
+    if (wrapper && wrapper.ready && wrapper.img) {{
+        ctx.drawImage(wrapper.img, x, y, w, h);
+    }} else {{
+        // まだ読み込み中、またはエラーの場合は四角形を表示
+        ctx.fillStyle = fallbackColor; 
+        ctx.fillRect(x, y, w, h);
+    }}
   }}
 
   function draw() {{
     ctx.clearRect(0, 0, canvas.width, canvas.height);
     ctx.fillStyle = '#87CEEB'; ctx.fillRect(0, 0, canvas.width, canvas.height);
     
-    // 雲、地形、アイテム、敵の描画（変更なし）
     ctx.fillStyle = 'rgba(255, 255, 255, 0.7)'; for(let c of clouds) {{ ctx.beginPath(); ctx.arc(c.x, c.y, 30, 0, Math.PI * 2); ctx.arc(c.x + 25, c.y - 10, 35, 0, Math.PI * 2); ctx.arc(c.x + 50, c.y, 30, 0, Math.PI * 2); ctx.fill(); }}
     for (let seg of terrainSegments) {{ ctx.fillStyle = '#654321'; ctx.fillRect(seg.x, seg.topY, seg.width, canvas.height - seg.topY); ctx.fillStyle = '#228B22'; ctx.fillRect(seg.x, seg.topY, seg.width, 10); }}
-    for (let item of items) drawObj(itemImg, item.x, item.y, item.width, item.height, 'gold');
-    for (let e of enemies) {{ if (e.type === 'hard') drawObj(enemy2Img, e.x, e.y, e.width, e.height, 'purple'); else drawObj(enemyImg, e.x, e.y, e.width, e.height, 'red'); }}
+    
+    // アイテム・敵もラッパーを渡す
+    for (let item of items) drawObj(itemImgWrapper, item.x, item.y, item.width, item.height, 'gold');
+    for (let e of enemies) {{ 
+        if (e.type === 'hard') drawObj(enemy2ImgWrapper, e.x, e.y, e.width, e.height, 'purple'); 
+        else drawObj(enemyImgWrapper, e.x, e.y, e.width, e.height, 'red'); 
+    }}
 
-    // ★ プレイヤーの描画（アニメーション対応）
     ctx.save();
     if (isInvincible && Math.floor(Date.now() / 100) % 2 === 0) ctx.globalAlpha = 0.5;
     
-    // 現在の状態に応じた画像を選択
-    let currentImg = null;
+    let currentWrapper = null;
     if (player.state === 'dead') {{
-        currentImg = playerAnim.dead;
+        currentWrapper = playerAnim.dead;
     }} else {{
-        // idle, running, jumping は配列から選択
-        currentImg = playerAnim[player.state][player.animIndex];
+        currentWrapper = playerAnim[player.state][player.animIndex];
     }}
 
-    // 左右反転処理と描画
     if (!facingRight) {{ 
         ctx.translate(player.x + player.width, player.y); ctx.scale(-1, 1); 
-        drawObj(currentImg, 0, 0, player.width, player.height, 'blue'); 
+        drawObj(currentWrapper, 0, 0, player.width, player.height, 'blue'); 
     }} else {{ 
-        drawObj(currentImg, player.x, player.y, player.width, player.height, 'blue'); 
+        drawObj(currentWrapper, player.x, player.y, player.width, player.height, 'blue'); 
     }}
     ctx.restore();
   }}
@@ -517,7 +524,6 @@ game_html = f"""
   function loop() {{
     update();
     draw();
-    // 死亡状態でも描画を続けるためにループは止めない（updateで制御）
     requestAnimationFrame(loop);
   }}
 
