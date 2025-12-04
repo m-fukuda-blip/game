@@ -3,7 +3,7 @@ import streamlit.components.v1 as components
 
 st.set_page_config(page_title="Action Game with Ranking & Animation", layout="wide")
 st.title("🎮 アクションゲーム：アニメーション実装版")
-st.caption("機能：❤️ライフ制 / 🆙レベルアップ / ☁️背景 / 🔊効果音 / 🏆グローバルランキング / 🏃‍♂️キャラクターアニメーション")
+st.caption("機能：❤️ライフ制 / 🆙レベルアップ / ☁️背景 / 🔊効果音 / 🏆グローバルランキング / 🏃‍♂️キャラクターアニメーション / 🎵8bit BGM")
 st.write("操作方法: **W** ジャンプ / **A** 左移動 / **D** 右移動 / **R** リセット / **F** 全画面")
 
 # ==========================================
@@ -35,9 +35,9 @@ game_html = f"""
     pointer-events: none;
   }}
   
-  /* ★修正: タイトル画像用のスタイル */
+  /* タイトル画像用のスタイル */
   .title-img {{
-    max-width: 22%;  /* 画面幅の22%に収める (前回の55%からさらに60%縮小) */
+    max-width: 22%;  /* 画面幅の22%に収める */
     height: auto;    /* アスペクト比を維持 */
     margin-bottom: 20px;
     opacity: 0;      /* 初期状態は透明 */
@@ -106,8 +106,6 @@ game_html = f"""
 
 <!-- タイトル画面 -->
 <div id="title-screen">
-    <!-- ★修正: テキストを画像に変更 -->
-    <!-- 画像URLは適宜修正してください -->
     <img id="title-img" class="title-img" src="https://raw.githubusercontent.com/m-fukuda-blip/game/main/game_title.png" alt="GAME TITLE">
     <div id="start-text" class="start-text">GAME START!</div>
 </div>
@@ -158,9 +156,89 @@ game_html = f"""
 
   // タイトル画面要素
   const titleScreen = document.getElementById('title-screen');
-  // ★修正: テキストではなく画像要素を取得
   const titleImg = document.getElementById('title-img');
   const startText = document.getElementById('start-text');
+
+  // ==========================================
+  // ★ BGM設定 (8bit Music)
+  // ==========================================
+  let isBgmPlaying = false;
+  let bgmTimeout = null;
+  const BPM = 130;
+  const beatTime = 60 / BPM;
+
+  // メロディ（Cメジャー・数字譜対応）
+  const melody = [
+    5,5,6,5,3,-1,3,5,
+    5,5,6,5,3,-1,3,2,
+    5,5,6,5,8,8,7,6,
+    6,5,3,3,-1,5,-1,-1
+  ];
+
+  // 数字→周波数（ドレミ変換）
+  const scaleToFreq = (num) => {{
+    if(num < 0) return null;
+    const scale = [261.63,293.66,329.63,349.23,392.00,440.00,493.88,523.25];
+    return scale[num-1];
+  }};
+
+  // ノイズ音（スネア・ハイハット用）
+  function playNoiseForBGM(time, duration = 0.05, volume = 0.25){{
+    if (audioCtx.state === 'suspended') audioCtx.resume();
+    const buffer = audioCtx.createBuffer(1, audioCtx.sampleRate * duration, audioCtx.sampleRate);
+    const data = buffer.getChannelData(0);
+    for(let i=0;i<data.length;i++) data[i] = (Math.random() * 2 - 1);
+    const noise = audioCtx.createBufferSource();
+    noise.buffer = buffer;
+
+    const gain = audioCtx.createGain();
+    gain.gain.setValueAtTime(volume, time);
+    gain.gain.exponentialRampToValueAtTime(0.01, time + duration);
+
+    noise.connect(gain).connect(audioCtx.destination);
+    noise.start(time);
+  }}
+
+  // Square波で音鳴らす
+  function playNoteForBGM(freq, time, duration = beatTime){{
+    if (audioCtx.state === 'suspended') audioCtx.resume();
+    const osc = audioCtx.createOscillator();
+    osc.type = "square";
+    osc.frequency.value = freq;
+
+    const gain = audioCtx.createGain();
+    gain.gain.setValueAtTime(0.15, time); // 音量を少し調整(0.25->0.15)
+    gain.gain.exponentialRampToValueAtTime(0.01, time + duration);
+
+    osc.connect(gain).connect(audioCtx.destination);
+    osc.start(time);
+    osc.stop(time + duration);
+  }}
+
+  // 曲再生
+  function playBGMLoop(){{
+    if (!isBgmPlaying) return; // 停止指示があれば終了
+    
+    const start = audioCtx.currentTime;
+    melody.forEach((note,i)=>{{
+      const t = start + i * beatTime;
+      if(note > 0){{
+        playNoteForBGM(scaleToFreq(note), t);
+      }} else {{
+        playNoiseForBGM(t,0.03,0.1);
+      }}
+    }});
+
+    // ループ予約
+    bgmTimeout = setTimeout(playBGMLoop, melody.length * beatTime * 1000);
+  }}
+
+  function startBGM() {{
+    if (isBgmPlaying) return; // 既に再生中なら無視
+    isBgmPlaying = true;
+    if (audioCtx.state === 'suspended') audioCtx.resume();
+    playBGMLoop();
+  }}
 
   // ==========================================
   // ★ 高負荷対策: 画像リサイズローダー
@@ -356,7 +434,26 @@ game_html = f"""
   // ==========================================
   
   function playSound(type) {{
-      // 省略
+    if (audioCtx.state === 'suspended') audioCtx.resume();
+    const osc = audioCtx.createOscillator();
+    const gain = audioCtx.createGain();
+    osc.connect(gain);
+    gain.connect(audioCtx.destination);
+    const now = audioCtx.currentTime;
+    
+    if (type === 'jump') {{
+        osc.type = 'square'; osc.frequency.setValueAtTime(150, now); osc.frequency.linearRampToValueAtTime(300, now + 0.1);
+        gain.gain.setValueAtTime(0.1, now); gain.gain.exponentialRampToValueAtTime(0.01, now + 0.1);
+        osc.start(now); osc.stop(now + 0.1);
+    }} else if (type === 'coin') {{
+        osc.type = 'sine'; osc.frequency.setValueAtTime(1200, now); osc.frequency.setValueAtTime(1600, now + 0.05);
+        gain.gain.setValueAtTime(0.1, now); gain.gain.exponentialRampToValueAtTime(0.01, now + 0.2);
+        osc.start(now); osc.stop(now + 0.2);
+    }} else if (type === 'hit') {{
+        osc.type = 'sawtooth'; osc.frequency.setValueAtTime(100, now); osc.frequency.linearRampToValueAtTime(50, now + 0.3);
+        gain.gain.setValueAtTime(0.2, now); gain.gain.exponentialRampToValueAtTime(0.01, now + 0.3);
+        osc.start(now); osc.stop(now + 0.3);
+    }}
   }}
 
   document.addEventListener('keydown', (e) => {{
@@ -378,12 +475,14 @@ game_html = f"""
     }}
 
     if (['KeyW', 'KeyA', 'KeyD', 'KeyR', 'KeyF'].includes(e.code)) {{ e.preventDefault(); }}
-    if (e.code === 'KeyD') {{ keys.right = true; facingRight = true; }}
-    if (e.code === 'KeyA') {{ keys.left = true; facingRight = false; }}
+    if (e.code === 'KeyD') {{ keys.right = true; facingRight = true; startBGM(); }} // ★BGM開始トリガー
+    if (e.code === 'KeyA') {{ keys.left = true; facingRight = false; startBGM(); }} // ★BGM開始トリガー
     if (e.code === 'KeyW') {{ 
         if (!player.jumping && !gameOver && !isTitle) {{ // ★タイトル中はジャンプ不可
             player.jumping = true; 
             player.dy = -12; 
+            playSound('jump');
+            startBGM(); // ★BGM開始トリガー
         }} 
     }}
     if (e.code === 'KeyR' && gameOver) resetGame();
@@ -576,6 +675,7 @@ game_html = f"""
             if (!gameOver) {{
                 hp = 0;
                 updateHearts();
+                playSound('hit'); // ★被弾音
                 handleGameOver();
             }}
         }}
@@ -614,6 +714,7 @@ game_html = f"""
                 
                 score += 50; 
                 scoreEl.innerText = score; 
+                playSound('coin'); // ★コイン音
                 updateLevel(); 
             }}
         }}
@@ -634,10 +735,13 @@ game_html = f"""
 
         if (player.x < e.x + e.width && player.x + player.width > e.x && player.y < e.y + e.height && player.y + player.height > e.y) {{ 
             if (player.dy > 0 && player.y + player.height < e.y + e.height * 0.6) {{ 
-                enemies.splice(i, 1); i--; player.dy = -10; score += 100; scoreEl.innerText = score; updateLevel(); 
+                enemies.splice(i, 1); i--; player.dy = -10; score += 100; scoreEl.innerText = score; 
+                playSound('coin'); // ★敵踏み音（コインと同じ）
+                updateLevel(); 
             }} else {{ 
                 if (!isInvincible) {{ 
-                    hp--; if (hp < 0) hp = 0; updateHearts(); if (hp <= 0) handleGameOver(); 
+                    hp--; if (hp < 0) hp = 0; updateHearts(); playSound('hit'); // ★ダメージ音
+                    if (hp <= 0) handleGameOver(); 
                     else {{ isInvincible = true; invincibleTimer = 60; enemies.splice(i, 1); i--; }} 
                 }} 
             }} 
