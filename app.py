@@ -3,7 +3,7 @@ import streamlit.components.v1 as components
 
 st.set_page_config(page_title="Action Game with Ranking & Animation", layout="wide")
 st.title("🎮 アクションゲーム：アニメーション実装版")
-st.caption("機能：❤️ライフ制 / 🆙レベルアップ / ☁️背景 / 🔊効果音 / 🏆グローバルランキング / 🏃‍♂️キャラクターアニメーション / 🎵8bit BGM")
+st.caption("機能：❤️ライフ制 / 🆙レベルアップ / ☁️背景 / 🔊効果音 / 🏆グローバルランキング / 🏃‍♂️アニメーション / 🎵BGM / ✨アイテム効果")
 st.write("操作方法: **W** ジャンプ / **A** 左移動 / **D** 右移動 / **R** リセット / **F** 全画面")
 
 # ==========================================
@@ -26,6 +26,7 @@ game_html = f"""
   /* --- UIレイヤー --- */
   #ui-layer {{ position: absolute; top: 20px; left: 20px; font-size: 24px; font-weight: bold; color: black; pointer-events: none; text-shadow: 1px 1px 0 #fff;}}
   #hearts {{ color: red; font-size: 30px; }}
+  #status-msg {{ font-size: 20px; margin-top: 5px; }}
 
   /* --- タイトル画面 --- */
   #title-screen {{
@@ -35,12 +36,11 @@ game_html = f"""
     pointer-events: none;
   }}
   
-  /* タイトル画像用のスタイル */
   .title-img {{
-    max-width: 22%;  /* 画面幅の22%に収める */
-    height: auto;    /* アスペクト比を維持 */
+    max-width: 22%; 
+    height: auto; 
     margin-bottom: 20px;
-    opacity: 0;      /* 初期状態は透明 */
+    opacity: 0; 
   }}
 
   .start-text {{
@@ -99,6 +99,7 @@ game_html = f"""
 <div id="ui-layer">
     Score: <span id="score">0</span> | Level: <span id="level">1</span><br>
     Life: <span id="hearts">❤️❤️❤️</span>
+    <div id="status-msg"></div>
 </div>
 
 <!-- キャンバス -->
@@ -144,6 +145,7 @@ game_html = f"""
   const scoreEl = document.getElementById('score');
   const levelEl = document.getElementById('level');
   const heartsEl = document.getElementById('hearts');
+  const statusMsgEl = document.getElementById('status-msg');
   
   const overlay = document.getElementById('overlay');
   const inputSection = document.getElementById('input-section');
@@ -154,32 +156,21 @@ game_html = f"""
   const loadingMsg = document.getElementById('loading-msg');
   const rankLoading = document.getElementById('rank-loading');
 
-  // タイトル画面要素
   const titleScreen = document.getElementById('title-screen');
   const titleImg = document.getElementById('title-img');
   const startText = document.getElementById('start-text');
 
   // ==========================================
-  // ★ BGM設定 (8bit Music)
+  // BGM設定
   // ==========================================
-  let isBgmPlaying = false;
+  let audioCtx, isBgmPlaying = false;
   let bgmTimeout = null;
-  let activeOscillators = []; // ★追加: 鳴っている音を管理するリスト
+  let activeOscillators = [];
   const BPM = 130;
   const beatTime = 60 / BPM;
 
-  const melody = [
-    5,5,6,5,3,-1,3,5,
-    5,5,6,5,3,-1,3,2,
-    5,5,6,5,8,8,7,6,
-    6,5,3,3,-1,5,-1,-1
-  ];
-
-  const scaleToFreq = (num) => {{
-    if(num < 0) return null;
-    const scale = [261.63,293.66,329.63,349.23,392.00,440.00,493.88,523.25];
-    return scale[num-1];
-  }};
+  const melody = [5,5,6,5,3,-1,3,5, 5,5,6,5,3,-1,3,2, 5,5,6,5,8,8,7,6, 6,5,3,3,-1,5,-1,-1];
+  const scaleToFreq = (num) => {{ if(num < 0) return null; const scale = [261.63,293.66,329.63,349.23,392.00,440.00,493.88,523.25]; return scale[num-1]; }};
 
   function playNoiseForBGM(time, duration = 0.05, volume = 0.25){{
     if (audioCtx.state === 'suspended') audioCtx.resume();
@@ -188,15 +179,11 @@ game_html = f"""
     for(let i=0;i<data.length;i++) data[i] = (Math.random() * 2 - 1);
     const noise = audioCtx.createBufferSource();
     noise.buffer = buffer;
-
     const gain = audioCtx.createGain();
     gain.gain.setValueAtTime(volume, time);
     gain.gain.exponentialRampToValueAtTime(0.01, time + duration);
-
     noise.connect(gain).connect(audioCtx.destination);
     noise.start(time);
-    
-    // ★追加: 停止用にリストに追加
     activeOscillators.push(noise);
   }}
 
@@ -205,149 +192,100 @@ game_html = f"""
     const osc = audioCtx.createOscillator();
     osc.type = "square";
     osc.frequency.value = freq;
-
     const gain = audioCtx.createGain();
     gain.gain.setValueAtTime(0.15, time); 
     gain.gain.exponentialRampToValueAtTime(0.01, time + duration);
-
     osc.connect(gain).connect(audioCtx.destination);
     osc.start(time);
     osc.stop(time + duration);
-    
-    // ★追加: 停止用にリストに追加
     activeOscillators.push(osc);
   }}
 
   function playBGMLoop(){{
     if (!isBgmPlaying) return; 
-    
     const start = audioCtx.currentTime;
     melody.forEach((note,i)=>{{
       const t = start + i * beatTime;
-      if(note > 0){{
-        playNoteForBGM(scaleToFreq(note), t);
-      }} else {{
-        playNoiseForBGM(t,0.03,0.1);
-      }}
+      if(note > 0) playNoteForBGM(scaleToFreq(note), t);
+      else playNoiseForBGM(t,0.03,0.1);
     }});
-
     bgmTimeout = setTimeout(playBGMLoop, melody.length * beatTime * 1000);
   }}
 
   function startBGM() {{
     if (isBgmPlaying) return; 
     isBgmPlaying = true;
+    if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
     if (audioCtx.state === 'suspended') audioCtx.resume();
     playBGMLoop();
   }}
 
-  // ★ BGM停止関数（修正版）
   function stopBGM() {{
     isBgmPlaying = false;
     if (bgmTimeout) clearTimeout(bgmTimeout);
-    
-    // ★重要: 予約済みの音をすべて強制停止する
-    activeOscillators.forEach(node => {{
-        try {{
-            node.stop();
-        }} catch(e) {{
-            // すでに再生終了している場合などは無視
-        }}
-    }});
-    activeOscillators = []; // リストを空にする
+    activeOscillators.forEach(node => {{ try {{ node.stop(); }} catch(e) {{}} }});
+    activeOscillators = []; 
   }}
 
-  // ★ ゲームオーバー音（残念な下降音）
   function playGameOverSound() {{
+    if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
     if (audioCtx.state === 'suspended') audioCtx.resume();
     const osc = audioCtx.createOscillator();
     const gain = audioCtx.createGain();
-    
-    // 少しチープな音色にする
     osc.type = 'sawtooth'; 
     osc.connect(gain);
     gain.connect(audioCtx.destination);
-    
     const now = audioCtx.currentTime;
-    
-    // 周波数: 800Hz から 50Hz へ 0.8秒かけて急降下（残念感を表現）
     osc.frequency.setValueAtTime(800, now);
     osc.frequency.exponentialRampToValueAtTime(50, now + 0.8);
-    
-    // 音量: 少しずつ消える
     gain.gain.setValueAtTime(0.3, now);
     gain.gain.exponentialRampToValueAtTime(0.01, now + 0.8);
-    
     osc.start(now);
     osc.stop(now + 0.8);
   }}
 
   // ==========================================
-  // ★ 高負荷対策: 画像リサイズローダー
+  // 画像読み込み (リサイズ関数を使用)
   // ==========================================
   function loadResized(src, w, h) {{
-      const wrapper = {{ 
-          img: null, 
-          ready: false, 
-          error: false 
-      }};
+      const wrapper = {{ img: null, ready: false, error: false }};
       const img = new Image();
       img.crossOrigin = "Anonymous"; 
       img.src = src;
-      
       img.onload = () => {{
           const offCanvas = document.createElement('canvas');
           offCanvas.width = w;
           offCanvas.height = h;
           const offCtx = offCanvas.getContext('2d');
           offCtx.drawImage(img, 0, 0, w, h);
-          wrapper.img = offCanvas; 
-          wrapper.ready = true;
+          wrapper.img = offCanvas; wrapper.ready = true;
       }};
-      
-      img.onerror = () => {{
-          wrapper.error = true;
-      }};
-      
+      img.onerror = () => {{ wrapper.error = true; }};
       return wrapper;
   }}
 
-  // ==========================================
-  // 画像読み込み (リサイズ関数を使用)
-  // ==========================================
-  const P_W = 40; 
-  const P_H = 40; 
+  const P_W = 40; const P_H = 40; 
+  const playerAnim = {{ idle: [], run: [], jump: [], dead: null }};
   
-  const playerAnim = {{
-      idle: [],
-      run: [],
-      jump: [],
-      dead: null
-  }};
-  
-  // 待機 (Taiki01 ~ 03)
   for(let i=1; i<=3; i++) {{ playerAnim.idle.push(loadResized(`https://raw.githubusercontent.com/m-fukuda-blip/game/main/Taiki0${{i}}.png`, P_W, P_H)); }}
-  // 走り (Run01 ~ 03)
   for(let i=1; i<=3; i++) {{ playerAnim.run.push(loadResized(`https://raw.githubusercontent.com/m-fukuda-blip/game/main/Run0${{i}}.png`, P_W, P_H)); }}
-  // ジャンプ (Jump01 ~ 03)
   for(let i=1; i<=3; i++) {{ playerAnim.jump.push(loadResized(`https://raw.githubusercontent.com/m-fukuda-blip/game/main/Jump0${{i}}.png`, P_W, P_H)); }}
-  // 死亡
   playerAnim.dead = loadResized("https://raw.githubusercontent.com/m-fukuda-blip/game/main/Dead.png", P_W, P_H);
 
-  // ★ 敵・アイテムのアニメーション画像
+  // 敵画像
   const enemyAnim = [];
   const enemy2Anim = [];
-  const itemEffectAnim = [];
-
-  // 敵1 (EnemyAction01 ~ 02)
   for(let i=1; i<=2; i++) {{ enemyAnim.push(loadResized(`https://raw.githubusercontent.com/m-fukuda-blip/game/main/EnemyAction0${{i}}.png`, 35, 35)); }}
-  // 敵2 (Enemy2Action01 ~ 02)
   for(let i=1; i<=2; i++) {{ enemy2Anim.push(loadResized(`https://raw.githubusercontent.com/m-fukuda-blip/game/main/Enemy2Action0${{i}}.png`, 35, 35)); }}
   
-  // アイテム (通常)
+  // ★ アイテム画像 (追加: capsule, muteki, jyama)
+  // ⚠️画像URLはGitHub等の正しいパスに置き換えてください
   const itemImgWrapper = loadResized("https://raw.githubusercontent.com/m-fukuda-blip/game/main/coin.png", 30, 30);
+  const capsuleImgWrapper = loadResized("https://raw.githubusercontent.com/m-fukuda-blip/game/main/capsule.png", 30, 30);
+  const mutekiImgWrapper = loadResized("https://raw.githubusercontent.com/m-fukuda-blip/game/main/muteki.png", 30, 30);
+  const jyamaImgWrapper = loadResized("https://raw.githubusercontent.com/m-fukuda-blip/game/main/jyama.png", 30, 30);
   
-  // アイテム取得エフェクト (ItemAction01 ~ 03)
+  const itemEffectAnim = [];
   for(let i=1; i<=3; i++) {{ itemEffectAnim.push(loadResized(`https://raw.githubusercontent.com/m-fukuda-blip/game/main/ItemAction0${{i}}.png`, 30, 30)); }}
 
   // ゲーム変数
@@ -360,7 +298,7 @@ game_html = f"""
   let gameSpeed = 1.0;
   let hp = 3;
   let gameOver = false;
-  let isTitle = true; // ★タイトル画面フラグ
+  let isTitle = true; 
   let frameCount = 0;
   let nextEnemySpawn = 0;
   let nextItemSpawn = 0;
@@ -369,6 +307,12 @@ game_html = f"""
   let invincibleTimer = 0;
   let terrainSegments = [];
   
+  // ★ 新しいステータス変数
+  let superMode = false;       // 無敵スター状態
+  let superModeTimer = 0;
+  let slowMode = false;        // 速度低下状態
+  let slowModeTimer = 0;
+
   const player = {{ 
       x: 100, y: 0, width: 40, height: 40, speed: 5, dx: 0, dy: 0, jumping: false,
       state: 'idle', animIndex: 0, animTimer: 0, 
@@ -380,10 +324,8 @@ game_html = f"""
   let clouds = [];
   const keys = {{ right: false, left: false, up: false }};
 
-  const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-
   // ==========================================
-  // API設定 (GAS)
+  // API設定
   // ==========================================
   const API_URL = "{GAS_API_URL}";
   let globalRankings = [];
@@ -393,21 +335,13 @@ game_html = f"""
         const response = await fetch(API_URL);
         const data = await response.json();
         return data;
-    }} catch (e) {{
-        console.error("Error fetching ranking:", e);
-        return [];
-    }}
+    }} catch (e) {{ console.error(e); return []; }}
   }}
 
   async function sendScore(name, score) {{
     try {{
-        await fetch(API_URL, {{
-            method: 'POST',
-            body: JSON.stringify({{ name: name, score: score }})
-        }});
-    }} catch (e) {{
-        console.error("Error sending score:", e);
-    }}
+        await fetch(API_URL, {{ method: 'POST', body: JSON.stringify({{ name: name, score: score }}) }});
+    }} catch (e) {{ console.error(e); }}
   }}
 
   fetchRankings().then(data => {{ globalRankings = data; }});
@@ -419,18 +353,11 @@ game_html = f"""
 
   async function submitScore() {{
     const name = nameInput.value.trim() || "NO NAME";
-    nameInput.disabled = true;
-    submitBtn.disabled = true;
-    loadingMsg.style.display = 'block';
-    
+    nameInput.disabled = true; submitBtn.disabled = true; loadingMsg.style.display = 'block';
     await sendScore(name, score);
     globalRankings = await fetchRankings();
-    
-    loadingMsg.style.display = 'none';
-    nameInput.disabled = false;
-    submitBtn.disabled = false;
-    inputSection.style.display = 'none';
-    showRankingTable(globalRankings);
+    loadingMsg.style.display = 'none'; nameInput.disabled = false; submitBtn.disabled = false;
+    inputSection.style.display = 'none'; showRankingTable(globalRankings);
   }}
 
   function showRankingTable(rankings) {{
@@ -442,9 +369,7 @@ game_html = f"""
         if (r) {{
             let style = (r.score === score && r.name === nameInput.value) ? "color: yellow; font-weight:bold;" : "";
             row.innerHTML = `<td class="rank-col">${{i + 1}}</td><td style="${{style}}">${{r.name}}</td><td class="score-col">${{r.score}}</td>`;
-        }} else {{
-            row.innerHTML = `<td class="rank-col">${{i + 1}}</td><td>---</td><td class="score-col">0</td>`;
-        }}
+        }} else {{ row.innerHTML = `<td class="rank-col">${{i + 1}}</td><td>---</td><td class="score-col">0</td>`; }}
         rankingBody.appendChild(row);
     }}
   }}
@@ -452,38 +377,26 @@ game_html = f"""
   function handleGameOver() {{
     gameOver = true;
     player.state = 'dead'; 
-    stopBGM(); // ★BGM停止
-    playGameOverSound(); // ★ゲームオーバー音再生
-    
+    stopBGM(); playGameOverSound();
     overlay.style.display = 'block';
     finalScoreDisplay.innerText = "Final Score: " + score;
     nameInput.value = "";
-    rankingBody.innerHTML = ""; 
-    rankLoading.style.display = "block";
-
+    rankingBody.innerHTML = ""; rankLoading.style.display = "block";
     fetchRankings().then(data => {{
         globalRankings = data;
         rankLoading.style.display = "none";
         showRankingTable(globalRankings);
-        if (score > 0 && checkRankIn(score)) {{
-            inputSection.style.display = 'block';
-            nameInput.focus();
-        }} else {{
-            inputSection.style.display = 'none';
-        }}
+        if (score > 0 && checkRankIn(score)) {{ inputSection.style.display = 'block'; nameInput.focus(); }} 
+        else {{ inputSection.style.display = 'none'; }}
     }});
   }}
 
-  // ==========================================
-  // ゲームロジック
-  // ==========================================
-  
   function playSound(type) {{
+    if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
     if (audioCtx.state === 'suspended') audioCtx.resume();
     const osc = audioCtx.createOscillator();
     const gain = audioCtx.createGain();
-    osc.connect(gain);
-    gain.connect(audioCtx.destination);
+    osc.connect(gain); gain.connect(audioCtx.destination);
     const now = audioCtx.currentTime;
     
     if (type === 'jump') {{
@@ -498,38 +411,29 @@ game_html = f"""
         osc.type = 'sawtooth'; osc.frequency.setValueAtTime(100, now); osc.frequency.linearRampToValueAtTime(50, now + 0.3);
         gain.gain.setValueAtTime(0.2, now); gain.gain.exponentialRampToValueAtTime(0.01, now + 0.3);
         osc.start(now); osc.stop(now + 0.3);
+    }} else if (type === 'heal') {{
+        osc.type = 'sine'; osc.frequency.setValueAtTime(400, now); osc.frequency.linearRampToValueAtTime(800, now + 0.2);
+        gain.gain.setValueAtTime(0.1, now); gain.gain.linearRampToValueAtTime(0, now + 0.3);
+        osc.start(now); osc.stop(now + 0.3);
+    }} else if (type === 'powerup') {{
+        osc.type = 'square'; osc.frequency.setValueAtTime(440, now); osc.frequency.setValueAtTime(880, now + 0.1);
+        gain.gain.setValueAtTime(0.1, now); gain.gain.linearRampToValueAtTime(0, now + 0.5);
+        osc.start(now); osc.stop(now + 0.5);
+    }} else if (type === 'bad') {{
+        osc.type = 'sawtooth'; osc.frequency.setValueAtTime(300, now); osc.frequency.linearRampToValueAtTime(150, now + 0.3);
+        gain.gain.setValueAtTime(0.1, now); gain.gain.linearRampToValueAtTime(0, now + 0.3);
+        osc.start(now); osc.stop(now + 0.3);
     }}
   }}
 
   document.addEventListener('keydown', (e) => {{
-    if (document.activeElement === nameInput) {{
-        if (e.key === 'Enter' && !submitBtn.disabled) submitScore();
-        return;
-    }}
+    if (document.activeElement === nameInput) {{ if (e.key === 'Enter' && !submitBtn.disabled) submitScore(); return; }}
     if (player.state === 'dead' && e.code !== 'KeyR') return;
-    
-    // ★ フルスクリーン切り替え (Fキー)
-    if (e.code === 'KeyF') {{
-        if (!document.fullscreenElement) {{
-            document.documentElement.requestFullscreen();
-        }} else {{
-            if (document.exitFullscreen) {{
-                document.exitFullscreen();
-            }}
-        }}
-    }}
-
+    if (e.code === 'KeyF') {{ if (!document.fullscreenElement) document.documentElement.requestFullscreen(); else if (document.exitFullscreen) document.exitFullscreen(); }}
     if (['KeyW', 'KeyA', 'KeyD', 'KeyR', 'KeyF'].includes(e.code)) {{ e.preventDefault(); }}
-    if (e.code === 'KeyD') {{ keys.right = true; facingRight = true; startBGM(); }} // ★BGM開始トリガー
-    if (e.code === 'KeyA') {{ keys.left = true; facingRight = false; startBGM(); }} // ★BGM開始トリガー
-    if (e.code === 'KeyW') {{ 
-        if (!player.jumping && !gameOver && !isTitle) {{ // ★タイトル中はジャンプ不可
-            player.jumping = true; 
-            player.dy = -12; 
-            playSound('jump');
-            startBGM(); // ★BGM開始トリガー
-        }} 
-    }}
+    if (e.code === 'KeyD') {{ keys.right = true; facingRight = true; startBGM(); }} 
+    if (e.code === 'KeyA') {{ keys.left = true; facingRight = false; startBGM(); }} 
+    if (e.code === 'KeyW') {{ if (!player.jumping && !gameOver && !isTitle) {{ player.jumping = true; player.dy = -12; playSound('jump'); startBGM(); }} }}
     if (e.code === 'KeyR' && gameOver) resetGame();
   }});
 
@@ -562,34 +466,34 @@ game_html = f"""
   }}
   function spawnEnemy() {{
     let type = Math.random() < 0.5 ? 'ground' : 'flying'; let speedBase = Math.random() * 3 + 2;
-    if (score >= 2000 && Math.random() < 0.3) {{ 
-        type = 'hard'; 
-        speedBase = 5; 
-    }}
-    let enemy = {{ 
-        x: canvas.width, y: 0, width: 35, height: 35, 
-        dx: -(speedBase * gameSpeed), dy: 0, 
-        type: type, angle: 0,
-        animIndex: 0, animTimer: 0 
-    }};
+    if (score >= 2000 && Math.random() < 0.3) {{ type = 'hard'; speedBase = 5; }}
+    let enemy = {{ x: canvas.width, y: 0, width: 35, height: 35, dx: -(speedBase * gameSpeed), dy: 0, type: type, angle: 0, animIndex: 0, animTimer: 0 }};
     if (type === 'ground' || type === 'hard') {{ const gY = getGroundYAtX(enemy.x); if (gY !== null) enemy.y = gY - enemy.height; else {{ enemy.type = 'flying'; enemy.y = Math.random() * 80 + 200; }} }} else enemy.y = Math.random() * 80 + 200;
     enemies.push(enemy); nextEnemySpawn = frameCount + Math.random() * (Math.max(20, 60 - (level * 5))) + Math.max(20, 60 - (level * 5));
   }}
+  
   function spawnItem() {{ 
+    // ★ ランダムでアイテム種別を決定
+    const r = Math.random();
+    let type = 'coin';
+    if (r < 0.65) type = 'coin';        // 65%
+    else if (r < 0.85) type = 'trap';   // 20% (邪魔)
+    else if (r < 0.95) type = 'heal';   // 10% (回復)
+    else type = 'star';                 // 5%  (無敵)
+
     items.push({{ 
         x: canvas.width, y: Math.random() * 150 + 150, width: 30, height: 30, dx: -2,
-        isCollected: false, animIndex: 0, animTimer: 0 
+        isCollected: false, animIndex: 0, animTimer: 0,
+        type: type // 種別を保存
     }}); 
     nextItemSpawn = frameCount + Math.random() * 60 + 40; 
   }}
+  
   function initClouds() {{ clouds = []; for(let i=0; i<5; i++) clouds.push({{x: Math.random() * canvas.width, y: Math.random() * 150, speed: Math.random() * 0.5 + 0.2}}); }}
   function updateClouds() {{ for(let c of clouds) {{ c.x -= c.speed; if(c.x < -100) {{ c.x = canvas.width; c.y = Math.random() * 150; }} }} }}
   function updateLevel() {{ const newLevel = Math.floor(score / 500) + 1; if (newLevel > level) {{ level = newLevel; gameSpeed = 1.0 + (level * 0.1); levelEl.innerText = level; if(hp < 3) {{ hp++; updateHearts(); }} }} }}
 
-
-  function updateHearts() {{
-    let h = ""; for(let i=0; i<hp; i++) h += "❤️"; heartsEl.innerText = h;
-  }}
+  function updateHearts() {{ let h = ""; for(let i=0; i<hp; i++) h += "❤️"; heartsEl.innerText = h; }}
 
   function resetGame() {{
     player.x = 100; player.y = 0; player.dx = 0; player.dy = 0;
@@ -599,193 +503,135 @@ game_html = f"""
     isInvincible = false; nextEnemySpawn = 50; nextItemSpawn = 30;
     scoreEl.innerText = score; levelEl.innerText = level;
     
-    // ★タイトル演出開始
-    isTitle = true;
-    titleScreen.style.display = 'flex';
-    
-    // ★修正: テキストではなく画像をアニメーション
-    titleImg.style.animation = 'none'; // アニメーションリセット
-    void titleImg.offsetWidth; // Reflow
-    titleImg.style.animation = 'slideUpFade 2s forwards';
-    
-    startText.style.opacity = '0';
-    startText.style.animation = 'none';
+    // ★ステータスリセット
+    superMode = false; superModeTimer = 0;
+    slowMode = false; slowModeTimer = 0;
+    statusMsgEl.innerText = "";
 
-    // 2秒後にGAME START表示
-    setTimeout(() => {{
-        startText.style.animation = 'blinkFade 0.5s forwards';
-        
-        // その1秒後にゲーム開始
-        setTimeout(() => {{
-            titleScreen.style.display = 'none';
-            isTitle = false;
-        }}, 1000);
-    }}, 2000);
+    isTitle = true; titleScreen.style.display = 'flex';
+    titleImg.style.animation = 'none'; void titleImg.offsetWidth; titleImg.style.animation = 'slideUpFade 2s forwards';
+    startText.style.opacity = '0'; startText.style.animation = 'none';
+    setTimeout(() => {{ startText.style.animation = 'blinkFade 0.5s forwards'; setTimeout(() => {{ titleScreen.style.display = 'none'; isTitle = false; }}, 1000); }}, 2000);
 
-    updateHearts();
-    initClouds();
-    generateCourse();
-
-    const startGround = getGroundYUnderPlayer();
-    const gY = startGround !== null ? startGround : BASE_GROUND_Y;
-    player.y = gY - player.height;
-
+    updateHearts(); initClouds(); generateCourse();
+    const startGround = getGroundYUnderPlayer(); const gY = startGround !== null ? startGround : BASE_GROUND_Y; player.y = gY - player.height;
     overlay.style.display = 'none';
   }}
 
   function updatePlayerAnimation() {{
     const prevState = player.state;
+    if (hp <= 0) player.state = 'dead';
+    else if (player.jumping) player.state = 'jump';
+    else if (keys.right || keys.left) player.state = 'run';
+    else player.state = 'idle';
 
-    if (hp <= 0) {{
-        player.state = 'dead';
-    }} else if (player.jumping) {{
-        player.state = 'jump';
-    }} else if (keys.right || keys.left) {{
-        player.state = 'run';
-    }} else {{
-        player.state = 'idle';
-    }}
-
-    if (player.state !== prevState) {{
-        player.animTimer = 0;
-        player.animIndex = 0;
-        player.idlePingPong = 1;
-    }}
-
+    if (player.state !== prevState) {{ player.animTimer = 0; player.animIndex = 0; player.idlePingPong = 1; }}
     player.animTimer++;
-
     switch (player.state) {{
-        case 'idle':
-            if (player.animTimer > player.animSpeedIdle) {{
-                player.animIndex += player.idlePingPong;
-                if (player.animIndex >= 2) player.idlePingPong = -1;
-                if (player.animIndex <= 0) player.idlePingPong = 1;
-                player.animTimer = 0;
-            }}
-            break;
-        case 'run': 
-            if (player.animTimer > player.animSpeedRun) {{
-                player.animIndex = (player.animIndex + 1) % 3;
-                player.animTimer = 0;
-            }}
-            break;
-        case 'jump': 
-            if (player.dy < -5) player.animIndex = 0;
-            else if (player.dy < 0) player.animIndex = 1;
-            else if (player.dy < 5) player.animIndex = 2;
-            else player.animIndex = 1;
-            break;
-        case 'dead':
-            player.animIndex = 0;
-            break;
+        case 'idle': if (player.animTimer > player.animSpeedIdle) {{ player.animIndex += player.idlePingPong; if (player.animIndex >= 2) player.idlePingPong = -1; if (player.animIndex <= 0) player.idlePingPong = 1; player.animTimer = 0; }} break;
+        case 'run': if (player.animTimer > player.animSpeedRun) {{ player.animIndex = (player.animIndex + 1) % 3; player.animTimer = 0; }} break;
+        case 'jump': if (player.dy < -5) player.animIndex = 0; else if (player.dy < 0) player.animIndex = 1; else if (player.dy < 5) player.animIndex = 2; else player.animIndex = 1; break;
+        case 'dead': player.animIndex = 0; break;
     }}
   }}
 
   function update() {{
-    if (gameOver && player.state !== 'dead') return;
-    if (player.state === 'dead') return;
-    
-    // ★タイトル画面中はゲーム更新を止める（雲だけ動かす）
-    if (isTitle) {{
-        updateClouds();
-        return;
-    }}
+    if (gameOver && player.state !== 'dead') return; if (player.state === 'dead') return;
+    if (isTitle) {{ updateClouds(); return; }}
 
-    frameCount++;
-    updateClouds();
+    frameCount++; updateClouds();
     if (isInvincible) {{ invincibleTimer--; if (invincibleTimer <= 0) isInvincible = false; }}
+    
+    // ★ ステータス効果のタイマー更新
+    let statusText = "";
+    if (superMode) {{
+        superModeTimer--;
+        statusText += "🌟SUPER MODE! ";
+        if (superModeTimer <= 0) superMode = false;
+    }}
+    if (slowMode) {{
+        slowModeTimer--;
+        statusText += "🐢SLOW... ";
+        if (slowModeTimer <= 0) slowMode = false;
+    }}
+    statusMsgEl.innerText = statusText;
+    if (superMode) statusMsgEl.style.color = "gold";
+    else if (slowMode) statusMsgEl.style.color = "violet";
+    else statusMsgEl.innerText = "";
+
+    // ★ 移動処理（Slow状態なら速度半減）
+    let currentSpeed = player.speed;
+    if (slowMode) currentSpeed *= 0.5;
 
     if (player.state !== 'dead') {{
-        if (keys.right) player.dx = player.speed;
-        else if (keys.left) player.dx = -player.speed;
+        if (keys.right) player.dx = currentSpeed;
+        else if (keys.left) player.dx = -currentSpeed;
         else player.dx *= FRICTION;
     }}
 
-    player.x += player.dx; 
-    player.y += player.dy; 
-    player.dy += GRAVITY;
-
+    player.x += player.dx; player.y += player.dy; player.dy += GRAVITY;
     if (player.x < 0) player.x = 0;
     if (player.x + player.width > canvas.width) player.x = canvas.width - player.width;
 
     const groundY = getGroundYUnderPlayer();
-    if (groundY !== null) {{
-        if (player.y + player.height >= groundY && player.dy >= 0) {{
-            player.y = groundY - player.height;
-            player.dy = 0;
-            player.jumping = false;
-        }}
-    }} else {{
-        if (player.y > canvas.height) {{
-            if (!gameOver) {{
-                hp = 0;
-                updateHearts();
-                playSound('hit'); // ★被弾音
-                handleGameOver();
-            }}
-        }}
-    }}
+    if (groundY !== null) {{ if (player.y + player.height >= groundY && player.dy >= 0) {{ player.y = groundY - player.height; player.dy = 0; player.jumping = false; }} }} 
+    else {{ if (player.y > canvas.height) {{ if (!gameOver) {{ hp = 0; updateHearts(); playSound('hit'); handleGameOver(); }} }} }}
     
     updatePlayerAnimation();
-
     if (gameOver) return;
 
     if (frameCount >= nextEnemySpawn) spawnEnemy();
     if (frameCount >= nextItemSpawn) spawnItem();
 
+    // ★ アイテム更新（効果の適用）
     for (let i = 0; i < items.length; i++) {{ 
         let item = items[i]; 
-        
         if (item.isCollected) {{
             item.animTimer++;
-            if (item.animTimer > 5) {{ 
-                item.animIndex++;
-                item.animTimer = 0;
-            }}
-            if (item.animIndex >= 3) {{
-                items.splice(i, 1);
-                i--;
-            }}
+            if (item.animTimer > 5) {{ item.animIndex++; item.animTimer = 0; }}
+            if (item.animIndex >= 3) {{ items.splice(i, 1); i--; }}
         }} else {{
             item.x += item.dx;
             if (item.x + item.width < 0) {{ items.splice(i, 1); i--; continue; }} 
-            
-            if (player.x < item.x + item.width && player.x + player.width > item.x && 
-                player.y < item.y + item.height && player.y + player.height > item.y) {{
+            if (player.x < item.x + item.width && player.x + player.width > item.x && player.y < item.y + item.height && player.y + player.height > item.y) {{
+                item.isCollected = true; item.animIndex = 0; item.animTimer = 0;
                 
-                item.isCollected = true;
-                item.animIndex = 0;
-                item.animTimer = 0;
+                // アイテム効果発動
+                if (item.type === 'coin') {{
+                    score += 50; playSound('coin');
+                }} else if (item.type === 'heal') {{
+                    hp = 3; updateHearts(); playSound('heal');
+                }} else if (item.type === 'star') {{
+                    superMode = true; superModeTimer = 1800; // 30秒 (60fps)
+                    isInvincible = true; invincibleTimer = 1800;
+                    playSound('powerup');
+                }} else if (item.type === 'trap') {{
+                    slowMode = true; slowModeTimer = 600; // 10秒 (60fps)
+                    playSound('bad');
+                }}
                 
-                score += 50; 
-                scoreEl.innerText = score; 
-                playSound('coin'); // ★コイン音
-                updateLevel(); 
+                scoreEl.innerText = score; updateLevel(); 
             }}
         }}
     }}
 
+    // ★ 敵更新（無敵アタック判定）
     for (let i = 0; i < enemies.length; i++) {{ 
-        let e = enemies[i]; 
-        e.x += e.dx;
-        
-        e.animTimer++;
-        if (e.animTimer > 10) {{ 
-            e.animIndex = (e.animIndex + 1) % 2;
-            e.animTimer = 0;
-        }}
-
+        let e = enemies[i]; e.x += e.dx;
+        e.animTimer++; if (e.animTimer > 10) {{ e.animIndex = (e.animIndex + 1) % 2; e.animTimer = 0; }}
         if (e.type === 'flying') {{ e.angle += 0.1; e.y += Math.sin(e.angle) * 2; }} 
         if (e.x + e.width < 0) {{ enemies.splice(i, 1); i--; continue; }} 
 
         if (player.x < e.x + e.width && player.x + player.width > e.x && player.y < e.y + e.height && player.y + player.height > e.y) {{ 
-            if (player.dy > 0 && player.y + player.height < e.y + e.height * 0.6) {{ 
-                enemies.splice(i, 1); i--; player.dy = -10; score += 100; scoreEl.innerText = score; 
-                playSound('coin'); // ★敵踏み音（コインと同じ）
-                updateLevel(); 
+            // 踏んだ、またはスーパー無敵モード中なら敵を倒す
+            if ((player.dy > 0 && player.y + player.height < e.y + e.height * 0.6) || superMode) {{ 
+                enemies.splice(i, 1); i--; 
+                
+                if (!superMode) player.dy = -10; // 通常の踏みつけジャンプ
+                score += 100; scoreEl.innerText = score; playSound('coin'); updateLevel(); 
             }} else {{ 
                 if (!isInvincible) {{ 
-                    hp--; if (hp < 0) hp = 0; updateHearts(); playSound('hit'); // ★ダメージ音
+                    hp--; if (hp < 0) hp = 0; updateHearts(); playSound('hit');
                     if (hp <= 0) handleGameOver(); 
                     else {{ isInvincible = true; invincibleTimer = 60; enemies.splice(i, 1); i--; }} 
                 }} 
@@ -795,12 +641,8 @@ game_html = f"""
   }}
 
   function drawObj(wrapper, x, y, w, h, fallbackColor) {{
-    if (wrapper && wrapper.ready && wrapper.img) {{
-        ctx.drawImage(wrapper.img, x, y, w, h);
-    }} else {{
-        ctx.fillStyle = fallbackColor; 
-        ctx.fillRect(x, y, w, h);
-    }}
+    if (wrapper && wrapper.ready && wrapper.img) ctx.drawImage(wrapper.img, x, y, w, h);
+    else {{ ctx.fillStyle = fallbackColor; ctx.fillRect(x, y, w, h); }}
   }}
 
   function draw() {{
@@ -810,55 +652,53 @@ game_html = f"""
     ctx.fillStyle = 'rgba(255, 255, 255, 0.7)'; for(let c of clouds) {{ ctx.beginPath(); ctx.arc(c.x, c.y, 30, 0, Math.PI * 2); ctx.arc(c.x + 25, c.y - 10, 35, 0, Math.PI * 2); ctx.arc(c.x + 50, c.y, 30, 0, Math.PI * 2); ctx.fill(); }}
     for (let seg of terrainSegments) {{ ctx.fillStyle = '#654321'; ctx.fillRect(seg.x, seg.topY, seg.width, canvas.height - seg.topY); ctx.fillStyle = '#228B22'; ctx.fillRect(seg.x, seg.topY, seg.width, 10); }}
     
+    // ★ アイテム描画（種類別）
     for (let item of items) {{
         if (item.isCollected) {{
             let effectWrapper = itemEffectAnim[item.animIndex];
             if(effectWrapper) drawObj(effectWrapper, item.x, item.y, item.width, item.height, 'yellow');
         }} else {{
-            drawObj(itemImgWrapper, item.x, item.y, item.width, item.height, 'gold');
+            // タイプに応じて画像を変える
+            if (item.type === 'coin') drawObj(itemImgWrapper, item.x, item.y, item.width, item.height, 'gold');
+            else if (item.type === 'heal') drawObj(capsuleImgWrapper, item.x, item.y, item.width, item.height, 'pink');
+            else if (item.type === 'star') drawObj(mutekiImgWrapper, item.x, item.y, item.width, item.height, 'yellow');
+            else if (item.type === 'trap') drawObj(jyamaImgWrapper, item.x, item.y, item.width, item.height, 'purple');
         }}
     }}
 
     for (let e of enemies) {{ 
         let animWrapper = null;
-        if (e.type === 'hard') {{
-            animWrapper = enemy2Anim[e.animIndex];
-            if (!animWrapper) animWrapper = enemy2Anim[0];
-            drawObj(animWrapper, e.x, e.y, e.width, e.height, 'purple'); 
-        }} else {{ 
-            animWrapper = enemyAnim[e.animIndex];
-            if (!animWrapper) animWrapper = enemyAnim[0];
-            drawObj(animWrapper, e.x, e.y, e.width, e.height, 'red'); 
-        }}
+        if (e.type === 'hard') {{ animWrapper = enemy2Anim[e.animIndex] || enemy2Anim[0]; drawObj(animWrapper, e.x, e.y, e.width, e.height, 'purple'); }} 
+        else {{ animWrapper = enemyAnim[e.animIndex] || enemyAnim[0]; drawObj(animWrapper, e.x, e.y, e.width, e.height, 'red'); }}
     }}
 
     ctx.save();
-    if (isInvincible && Math.floor(Date.now() / 100) % 2 === 0) ctx.globalAlpha = 0.5;
+    // ★ プレイヤーのエフェクト
+    if (superMode) {{
+        // スーパーモード：激しい点滅と金色オーラ
+        if (Math.floor(Date.now() / 50) % 2 === 0) {{ ctx.globalAlpha = 0.8; ctx.filter = 'brightness(1.5) drop-shadow(0 0 5px gold)'; }}
+    }} else if (slowMode) {{
+        // スローモード：紫色っぽく
+        ctx.filter = 'hue-rotate(270deg)';
+    }} else if (isInvincible) {{
+        // 通常のダメージ後無敵
+        if (Math.floor(Date.now() / 100) % 2 === 0) ctx.globalAlpha = 0.5;
+    }}
     
     let currentWrapper = null;
-    if (player.state === 'dead') {{
-        currentWrapper = playerAnim.dead;
-    }} else {{
-        currentWrapper = playerAnim[player.state][player.animIndex];
-    }}
+    if (player.state === 'dead') currentWrapper = playerAnim.dead;
+    else currentWrapper = playerAnim[player.state][player.animIndex];
 
-    if (!facingRight) {{ 
-        ctx.translate(player.x + player.width, player.y); ctx.scale(-1, 1); 
-        drawObj(currentWrapper, 0, 0, player.width, player.height, 'blue'); 
-    }} else {{ 
-        drawObj(currentWrapper, player.x, player.y, player.width, player.height, 'blue'); 
-    }}
+    if (!facingRight) {{ ctx.translate(player.x + player.width, player.y); ctx.scale(-1, 1); drawObj(currentWrapper, 0, 0, player.width, player.height, 'blue'); }} 
+    else {{ drawObj(currentWrapper, player.x, player.y, player.width, player.height, 'blue'); }}
     ctx.restore();
   }}
 
   function loop() {{
-    update();
-    draw();
-    requestAnimationFrame(loop);
+    update(); draw(); requestAnimationFrame(loop);
   }}
 
-  resetGame();
-  loop(); // 初回ループ開始
+  resetGame(); loop(); 
 
 </script>
 </body>
