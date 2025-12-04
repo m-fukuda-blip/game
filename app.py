@@ -37,7 +37,7 @@ game_html = f"""
   
   /* ★修正: タイトル画像用のスタイル */
   .title-img {{
-    max-width: 80%;  /* 画面幅の80%に収める */
+    max-width: 55%;  /* 画面幅の55%に収める (元の80%の約70%のサイズ) */
     height: auto;    /* アスペクト比を維持 */
     margin-bottom: 20px;
     opacity: 0;      /* 初期状態は透明 */
