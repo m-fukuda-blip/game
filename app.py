@@ -24,7 +24,7 @@ game_html = f"""
   canvas {{ background-color: #87CEEB; border: 4px solid #fff; box-shadow: 0 0 20px rgba(0,0,0,0.5); }}
   
   /* --- UIレイヤー --- */
-  #ui-layer {{ position: absolute; top: 20px; left: 20px; font-size: 24px; font-weight: bold; color: black; pointer-events: none; text-shadow: 1px 1px 0 #fff;}}
+  #ui-layer {{ position: absolute; top: 20px; left: 20px; font-size: 24px; font-weight: bold; color: black; pointer-events: none; text-shadow: 1px 1px 0 #fff; z-index: 5; }}
   #hearts {{ color: red; font-size: 30px; }}
   #status-msg {{ font-size: 20px; margin-top: 5px; }}
 
@@ -91,6 +91,60 @@ game_html = f"""
   @keyframes blink {{ 50% {{ opacity: 0.5; }} }}
 
   .restart-msg {{ margin-top: 20px; font-size: 14px; color: #ccc; }}
+
+  /* --- ★追加: モバイルコントローラー --- */
+  #mobile-controls {{
+    display: none; /* デフォルトでは非表示 */
+    position: absolute;
+    bottom: 20px;
+    left: 0;
+    width: 100%;
+    height: 100px;
+    z-index: 100;
+    pointer-events: none; /* ボタン以外はタッチを通す */
+    justify-content: space-between;
+    padding: 0 40px;
+    box-sizing: border-box;
+  }}
+
+  /* スマホ・タブレット（タッチデバイス）でのみ表示 */
+  @media (hover: none) and (pointer: coarse) {{
+    #mobile-controls {{ display: flex; }}
+  }}
+
+  .control-group {{
+    pointer-events: auto;
+    display: flex;
+    gap: 20px;
+    align-items: center;
+  }}
+
+  .touch-btn {{
+    width: 70px;
+    height: 70px;
+    border-radius: 50%;
+    background: rgba(255, 255, 255, 0.2);
+    border: 2px solid rgba(255, 255, 255, 0.6);
+    color: white;
+    font-size: 30px;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    touch-action: manipulation;
+    user-select: none;
+    -webkit-user-select: none;
+    cursor: pointer;
+    text-shadow: 1px 1px 2px black;
+  }}
+  .touch-btn:active {{ background: rgba(255, 255, 255, 0.5); }}
+  
+  #btn-reset {{
+    width: 50px; height: 50px; font-size: 20px; 
+    background: rgba(255, 50, 50, 0.4);
+    position: absolute; top: -350px; right: 20px; /* 画面右上に配置 */
+    pointer-events: auto;
+  }}
+
 </style>
 </head>
 <body>
@@ -134,6 +188,19 @@ game_html = f"""
     </div>
 
     <div class="restart-msg">Press 'R' to Restart</div>
+</div>
+
+<!-- ★追加: モバイルコントローラー -->
+<div id="mobile-controls">
+    <div class="control-group">
+        <div id="btn-left" class="touch-btn">◀</div>
+        <div id="btn-right" class="touch-btn">▶</div>
+    </div>
+    <div class="control-group">
+        <div id="btn-jump" class="touch-btn" style="background: rgba(255, 200, 0, 0.4);">▲</div>
+    </div>
+    <!-- リセットボタンは右上 -->
+    <div id="btn-reset" class="touch-btn">R</div>
 </div>
 
 <script>
@@ -444,6 +511,36 @@ game_html = f"""
         gain.gain.setValueAtTime(0.1, now); gain.gain.linearRampToValueAtTime(0, now + 0.3);
         osc.start(now); osc.stop(now + 0.3);
     }}
+  }}
+
+  // ★追加: タッチ操作用
+  const btnLeft = document.getElementById('btn-left');
+  const btnRight = document.getElementById('btn-right');
+  const btnJump = document.getElementById('btn-jump');
+  const btnReset = document.getElementById('btn-reset');
+
+  // スマホでのズームやスクロール防止
+  document.addEventListener('touchstart', function(e) {{
+      if (e.target.classList.contains('touch-btn')) e.preventDefault();
+  }}, {{ passive: false }});
+
+  if(btnLeft) {{
+      btnLeft.addEventListener('touchstart', (e) => {{ keys.left = true; facingRight = false; startBGM(); }});
+      btnLeft.addEventListener('touchend', (e) => {{ keys.left = false; }});
+  }}
+  if(btnRight) {{
+      btnRight.addEventListener('touchstart', (e) => {{ keys.right = true; facingRight = true; startBGM(); }});
+      btnRight.addEventListener('touchend', (e) => {{ keys.right = false; }});
+  }}
+  if(btnJump) {{
+      btnJump.addEventListener('touchstart', (e) => {{
+          if (!player.jumping && !gameOver && !isTitle) {{ player.jumping = true; player.dy = -12; playSound('jump'); startBGM(); }}
+      }});
+  }}
+  if(btnReset) {{
+      btnReset.addEventListener('touchstart', (e) => {{
+          if(gameOver) resetGame();
+      }});
   }}
 
   document.addEventListener('keydown', (e) => {{
