@@ -67,8 +67,10 @@ game_html = f"""
   #overlay {{ 
     position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); 
     background: rgba(0, 0, 0, 0.85); border: 4px solid white; border-radius: 10px;
-    padding: 30px; text-align: center; color: white; display: none; width: 400px; z-index: 20;
+    padding: 30px; text-align: center; color: white; display: none; width: 400px; 
     max-width: 90%; /* スマホでは画面幅に合わせる */
+    /* ★修正: コントローラーより手前に表示するためにZ-indexを大きく */
+    z-index: 200; 
   }}
   h2 {{ margin-top: 0; color: yellow; text-shadow: 2px 2px #f00; }}
   
@@ -109,7 +111,8 @@ game_html = f"""
     z-index: 100;
     pointer-events: none; 
     justify-content: space-between;
-    padding: 0 40px;
+    /* ★修正: 画面端に寄せるためにpaddingを削減 */
+    padding: 0 10px;
     box-sizing: border-box;
   }}
 
@@ -129,13 +132,15 @@ game_html = f"""
   }}
 
   .touch-btn {{
-    width: 70px;
-    height: 70px;
+    /* ★修正: ボタンサイズを大きく */
+    width: 90px;
+    height: 90px;
     border-radius: 50%;
     background: rgba(255, 255, 255, 0.2);
     border: 2px solid rgba(255, 255, 255, 0.6);
     color: white;
-    font-size: 30px;
+    /* ★修正: 文字サイズも大きく */
+    font-size: 40px;
     display: flex;
     justify-content: center;
     align-items: center;
@@ -147,19 +152,20 @@ game_html = f"""
   }}
   .touch-btn:active {{ background: rgba(255, 255, 255, 0.5); }}
   
-  /* ★追加: ゲームオーバー画面用リスタートボタン (デフォルト非表示) */
+  /* ★修正: ゲームオーバー画面用リスタートボタン */
   #mobile-retry-btn {{
       display: none;
-      margin: 20px auto 0 auto;
-      padding: 10px 30px;
-      font-size: 20px;
+      margin: 25px auto 10px auto; /* 上下の余白を確保 */
+      padding: 15px 40px;
+      font-size: 24px;
       background: #00d2ff;
-      border: 2px solid white;
+      border: 3px solid white;
       color: white;
       font-weight: bold;
-      border-radius: 30px;
+      border-radius: 50px;
       cursor: pointer;
       animation: blink 2s infinite;
+      box-shadow: 0 0 10px rgba(0, 210, 255, 0.8);
   }}
 
 </style>
