@@ -260,10 +260,7 @@ game_html = f"""
           offCtx.drawImage(img, 0, 0, w, h);
           wrapper.img = offCanvas; wrapper.ready = true;
       }};
-      img.onerror = () => {{ 
-          console.error("Failed to load image:", src);
-          wrapper.error = true; 
-      }};
+      img.onerror = () => {{ wrapper.error = true; }};
       return wrapper;
   }}
 
@@ -778,3 +775,6 @@ game_html = f"""
 </script>
 </body>
 </html>
+"""
+
+components.html(game_html, height=550, scrolling=False)
