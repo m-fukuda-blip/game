@@ -4,10 +4,9 @@ import streamlit.components.v1 as components
 st.set_page_config(page_title="Action Game with Ranking & Animation", layout="wide")
 
 # ★修正: タイトルテキストを削除し、画像を表示
-# st.title("🎮 アクションゲーム：アニメーション実装版") 
 st.image("https://raw.githubusercontent.com/m-fukuda-blip/game/main/gametitlefix.png", use_column_width=True)
 
-st.caption("機能：❤️ライフ制 / 🆙レベルアップ / ☁️背景 / 🔊効果音 / 🏆グローバルランキング / 🏃‍♂️アニメーション / 🎵加速するBGM / ✨アイテム効果 / 🧗‍♂️段差判定 / 💥コンボボーナス")
+st.caption("機能：❤️ライフ制 / 🆙レベルアップ / ☁️背景変化 / 🔊効果音 / 🏆グローバルランキング / 🏃‍♂️アニメーション / 🎵加速するBGM / ✨アイテム効果 / 🧗‍♂️段差判定 / 💥コンボボーナス / 🫨画面シェイク")
 st.write("操作方法: **W** ジャンプ / **A** 左移動 / **D** 右移動 / **R** リセット / **F** 全画面")
 
 # ==========================================
@@ -33,11 +32,11 @@ game_html = f"""
     align-items: center; 
     height: 80vh;
     
-    /* ★修正: スマホでの誤操作（選択・長押しメニュー・ズーム）を防止 */
+    /* スマホでの誤操作防止 */
     user-select: none;
-    -webkit-user-select: none;   /* Safari/Chrome用 */
-    -webkit-touch-callout: none; /* iOS長押しメニュー防止 */
-    touch-action: none;          /* ピンチズームやスクロール防止 */
+    -webkit-user-select: none;
+    -webkit-touch-callout: none;
+    touch-action: none;
   }}
   
   /* Canvas設定 */
@@ -104,7 +103,6 @@ game_html = f"""
   #input-section {{ margin-bottom: 20px; display: none; }}
   input[type="text"] {{ 
     padding: 5px; font-size: 16px; width: 150px; text-align: center; 
-    /* ★修正: 入力欄だけは選択・編集可能に戻す */
     user-select: text;
     -webkit-user-select: text;
   }}
@@ -171,7 +169,7 @@ game_html = f"""
   }}
   .touch-btn:active {{ background: rgba(255, 255, 255, 0.5); }}
   
-  /* ★追加: 自動リスタートメッセージ */
+  /* 自動リスタートメッセージ */
   #auto-restart-msg {{
       display: none;
       color: #00d2ff;
@@ -224,7 +222,7 @@ game_html = f"""
     </div>
 
     <div class="restart-msg">Press 'R' to Restart</div>
-    <!-- ★追加: 自動リスタートメッセージ -->
+    <!-- 自動リスタートメッセージ -->
     <div id="auto-restart-msg"></div>
 </div>
 
@@ -240,16 +238,13 @@ game_html = f"""
 </div>
 
 <script>
-  // ★追加: 右クリックメニュー等の誤操作を防止
+  // 右クリックメニュー防止
   document.addEventListener('contextmenu', event => event.preventDefault());
 
-  // ==========================================
-  // 初期設定
-  // ==========================================
   const canvas = document.getElementById('gameCanvas');
   const ctx = canvas.getContext('2d');
   
-  // スマホ判定（画面幅またはタッチ機能）
+  // スマホ判定
   const isMobile = ('ontouchstart' in window) || (navigator.maxTouchPoints > 0) || (window.innerWidth < 800);
 
   if (window.innerWidth < 800) {{
@@ -274,6 +269,27 @@ game_html = f"""
   const titleScreen = document.getElementById('title-screen');
   const titleImg = document.getElementById('title-img');
   const startText = document.getElementById('start-text');
+
+  // ==========================================
+  // ★ 画面シェイク機能
+  // ==========================================
+  let screenShake = {{ x: 0, y: 0, duration: 0, intensity: 0 }};
+
+  function addShake(intensity, duration) {{
+      screenShake.intensity = intensity;
+      screenShake.duration = duration;
+  }}
+
+  function updateShake() {{
+      if (screenShake.duration > 0) {{
+          screenShake.x = (Math.random() - 0.5) * screenShake.intensity;
+          screenShake.y = (Math.random() - 0.5) * screenShake.intensity;
+          screenShake.duration--;
+      }} else {{
+          screenShake.x = 0;
+          screenShake.y = 0;
+      }}
+  }}
 
   // ==========================================
   // BGM設定
@@ -413,7 +429,6 @@ game_html = f"""
       cloudImgWrappers.push(loadResized(`https://raw.githubusercontent.com/m-fukuda-blip/game/main/cloud${{i}}.png`, 170, 120)); 
   }}
 
-  // ゲーム変数
   const GRAVITY = 0.6;
   const FRICTION = 0.8;
   const BASE_GROUND_Y = 360;  
@@ -439,7 +454,6 @@ game_html = f"""
   
   let floatingTexts = [];
   
-  // ★ 自動リスタート用タイマー
   let autoRestartTimer = null;
 
   const player = {{ 
@@ -454,9 +468,6 @@ game_html = f"""
   let clouds = [];
   const keys = {{ right: false, left: false, up: false }};
 
-  // ==========================================
-  // API設定
-  // ==========================================
   const API_URL = "{GAS_API_URL}";
   let globalRankings = [];
 
@@ -481,7 +492,6 @@ game_html = f"""
     return currentScore > globalRankings[globalRankings.length - 1].score;
   }}
 
-  // ★ カウントダウン＆自動リスタート
   function startAutoRestartCountdown() {{
       let count = 5;
       autoRestartMsg.style.display = 'block';
@@ -508,7 +518,6 @@ game_html = f"""
     loadingMsg.style.display = 'none'; nameInput.disabled = false; submitBtn.disabled = false;
     inputSection.style.display = 'none'; showRankingTable(globalRankings);
     
-    // ★スマホなら送信後に自動リスタート予約
     if (isMobile) {{
         startAutoRestartCountdown();
     }}
@@ -532,6 +541,10 @@ game_html = f"""
     gameOver = true;
     player.state = 'dead'; 
     stopBGM(); playGameOverSound();
+    
+    // ★追加: ゲームオーバー時のシェイク（大）
+    addShake(15, 20); 
+
     overlay.style.display = 'block';
     finalScoreDisplay.innerText = "Final Score: " + score;
     nameInput.value = "";
@@ -546,10 +559,8 @@ game_html = f"""
         
         if (isRankIn) {{ 
             inputSection.style.display = 'block'; nameInput.focus(); 
-            // ランクイン時は自動リスタートしない（送信待ち）
         }} else {{ 
             inputSection.style.display = 'none'; 
-            // ★スマホでランク外なら即時カウントダウン
             if (isMobile) {{
                 startAutoRestartCountdown();
             }}
@@ -557,7 +568,6 @@ game_html = f"""
     }});
   }}
 
-  // playSound省略 (変更なし)
   function playSound(type) {{
     if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
     if (audioCtx.state === 'suspended') audioCtx.resume();
@@ -593,7 +603,6 @@ game_html = f"""
     }}
   }}
 
-  // タッチ操作設定
   const btnLeft = document.getElementById('btn-left');
   const btnRight = document.getElementById('btn-right');
   const btnJump = document.getElementById('btn-jump');
@@ -632,7 +641,6 @@ game_html = f"""
     if (e.code === 'KeyA') keys.left = false;
   }});
 
-  // generateCourseなど省略（変更なし）
   function generateCourse() {{
     terrainSegments = [];
     let x = 0; let prevLevel = 0; const SEG_HEIGHTS = [BASE_GROUND_Y, BASE_GROUND_Y - 40, BASE_GROUND_Y - 80];
@@ -743,6 +751,9 @@ game_html = f"""
     if (gameOver && player.state !== 'dead') return; if (player.state === 'dead') return;
     if (isTitle) {{ updateClouds(); return; }}
 
+    // ★追加: シェイク更新
+    updateShake();
+
     frameCount++; updateClouds();
     if (isInvincible) {{ invincibleTimer--; if (invincibleTimer <= 0) isInvincible = false; }}
     
@@ -831,9 +842,15 @@ game_html = f"""
                 let bonusPoints = 100 * multiplier;
                 score += bonusPoints; scoreEl.innerText = score; playSound('coin'); updateLevel(); 
                 if (multiplier > 1) {{ floatingTexts.push({{ x: player.x, y: player.y - 20, text: "BONUS x" + multiplier, life: 60, dy: -1.5 }}); }}
+                
+                // ★追加: 敵を踏んだ時のシェイク（小）
+                addShake(5, 10); 
+
             }} else {{ 
                 if (!isInvincible) {{ 
                     hp--; if (hp < 0) hp = 0; updateHearts(); playSound('hit');
+                    // ★追加: ダメージ時のシェイク（大）
+                    addShake(15, 20);
                     if (hp <= 0) handleGameOver(); 
                     else {{ isInvincible = true; invincibleTimer = 60; enemies.splice(i, 1); i--; }} 
                 }} 
@@ -849,8 +866,21 @@ game_html = f"""
 
   function draw() {{
     ctx.clearRect(0, 0, canvas.width, canvas.height);
-    ctx.fillStyle = '#87CEEB'; ctx.fillRect(0, 0, canvas.width, canvas.height);
     
+    // ★追加: 時間帯による空の色変更
+    let skyColor;
+    if (score < 1000) skyColor = '#87CEEB'; // 昼
+    else if (score < 3000) skyColor = '#FF7F50'; // 夕方
+    else if (score < 5000) skyColor = '#191970'; // 夜
+    else skyColor = '#4B0082'; // 宇宙
+
+    ctx.fillStyle = skyColor; 
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+    
+    // ★追加: シェイク適用開始
+    ctx.save();
+    ctx.translate(screenShake.x, screenShake.y);
+
     for(let c of clouds) {{
         let wrapper = cloudImgWrappers[c.imgIndex];
         if (wrapper && wrapper.ready && wrapper.img) {{ ctx.drawImage(wrapper.img, c.x, c.y); }} 
@@ -905,6 +935,9 @@ game_html = f"""
 
     ctx.fillStyle = "yellow"; ctx.font = "bold 20px Courier New"; ctx.strokeStyle = "black"; ctx.lineWidth = 3;
     for (let ft of floatingTexts) {{ ctx.strokeText(ft.text, ft.x, ft.y); ctx.fillText(ft.text, ft.x, ft.y); }}
+
+    // ★追加: シェイク適用終了
+    ctx.restore();
   }}
 
   function loop() {{ update(); draw(); requestAnimationFrame(loop); }}
