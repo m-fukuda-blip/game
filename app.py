@@ -24,7 +24,7 @@ st.markdown("""
 # タイトル画像を表示
 st.image("https://raw.githubusercontent.com/m-fukuda-blip/game/main/gametitlefix.png", use_column_width=True)
 
-st.caption("機能：❤️ライフ / 🆙レベル / ☁️背景変化 / 🔊音 / 🏆ランク / 🏃‍♂️アニメ / 🎵BGM / ✨アイテム / 🧗‍♂️段差 / 💥コンボ / 🫨シェイク / 📏サイズ / 🦘2段ジャンプ / ✨撃破演出 / ⬇️しゃがみ / ⏩横スクロール / 🧱空中足場 / ⛩️ゲート / 🗻パララックス / 🕹️スティック操作")
+st.caption("機能：❤️ライフ / 🆙レベル / ☁️背景変化 / 🔊音 / 🏆ランク / 🏃‍♂️アニメ / 🎵BGM / ✨アイテム / 🧗‍♂️段差 / 💥コンボ / 🫨シェイク / 📏サイズ / 🦘2段ジャンプ / ✨撃破演出 / ⬇️しゃがみ / ⏩横スクロール / 🧱空中足場 / ⛩️ゲート / 🗻パララックス / 🕹️スティック操作 / 📱画面最適化")
 st.write("操作方法: **W** ジャンプ(2回可) / **A** 左移動 / **D** 右移動 / **S** しゃがみ / **R** リセット / **F** 全画面")
 
 # ==========================================
@@ -63,12 +63,50 @@ game_html = f"""
     touch-action: none;
   }}
   
-  canvas {{ background-color: #87CEEB; border: 4px solid #fff; box-shadow: 0 0 20px rgba(0,0,0,0.5); }}
+  /* Canvas設定 */
+  canvas {{ 
+      background-color: #87CEEB; 
+      border: 4px solid #fff; 
+      box-shadow: 0 0 20px rgba(0,0,0,0.5);
+      /* デフォルトではサイズ指定なし（JS制御） */
+  }}
   
-  #ui-layer {{ position: absolute; top: 20px; left: 20px; font-size: 24px; font-weight: bold; color: black; pointer-events: none; text-shadow: 1px 1px 0 #fff; z-index: 5; }}
+  /* ★修正: スマホ横持ち時のCanvas最適化 */
+  @media (max-height: 500px) and (orientation: landscape) {{
+      canvas {{
+          height: 100vh;       /* 画面の高さいっぱいに */
+          width: auto;         /* アスペクト比維持 */
+          max-width: 100vw;    /* 画面幅を超えない */
+          object-fit: contain; /* 全体が収まるように */
+          border: none;        /* 枠線を消してスッキリさせる */
+      }}
+  }}
+
+  /* --- UIレイヤー --- */
+  #ui-layer {{ 
+      position: absolute; 
+      top: 20px; left: 20px; 
+      font-size: 24px; font-weight: bold; 
+      color: black; 
+      pointer-events: none; 
+      text-shadow: 1px 1px 0 #fff; 
+      z-index: 5; 
+  }}
+
+  /* ★修正: スマホ横持ち時のUI縮小 */
+  @media (max-height: 500px) and (orientation: landscape) {{
+      #ui-layer {{
+          top: 10px; left: 15px;
+          transform: scale(0.7); /* 70%に縮小 */
+          transform-origin: top left;
+          width: 100%;
+      }}
+  }}
+
   #hearts {{ color: red; font-size: 30px; }}
   #status-msg {{ font-size: 20px; margin-top: 5px; }}
 
+  /* --- タイトル画面 --- */
   #title-screen {{
     position: absolute; top: 0; left: 0; width: 100%; height: 100%;
     display: flex; flex-direction: column; justify-content: center; align-items: center;
@@ -92,12 +130,11 @@ game_html = f"""
     max-width: 90%; z-index: 200; 
   }}
 
-  /* ★修正: スマホ横画面（高さが低い）時はオーバーレイを縮小して全体を表示させる */
   @media (max-height: 500px) {{
       #overlay {{
           padding: 10px;
-          transform: translate(-50%, -50%) scale(0.7); /* 全体を70%に縮小 */
-          width: 500px; /* 縮小分、ベース幅を広げる */
+          transform: translate(-50%, -50%) scale(0.7); 
+          width: 500px; 
       }}
       #final-score-display {{ margin-bottom: 5px; font-size: 20px; }}
       h2 {{ margin: 5px 0; font-size: 24px; }}
@@ -155,39 +192,20 @@ game_html = f"""
     #mobile-retry-btn {{ display: block !important; }}
   }}
 
-  /* ★修正: 左側ジョイスティック */
   .joystick-area {{
-      pointer-events: auto;
-      width: 120px; height: 120px;
-      margin-bottom: 20px;
-      margin-left: 20px;
-      position: relative;
-      /* 少し半透明な背景でコントローラーっぽく */
-      background: rgba(255, 255, 255, 0.1);
-      border: 2px solid rgba(255, 255, 255, 0.3);
-      border-radius: 50%;
-      touch-action: none; /* 重要 */
+      pointer-events: auto; width: 120px; height: 120px; margin-bottom: 20px; margin-left: 20px; position: relative;
+      background: rgba(255, 255, 255, 0.1); border: 2px solid rgba(255, 255, 255, 0.3); border-radius: 50%; touch-action: none;
   }}
-  
   .joystick-knob {{
-      width: 50px; height: 50px;
-      background: rgba(0, 210, 255, 0.8);
-      border-radius: 50%;
-      position: absolute;
-      top: 50%; left: 50%;
-      transform: translate(-50%, -50%);
-      box-shadow: 0 0 10px rgba(0, 210, 255, 0.5);
-      pointer-events: none; /* タッチイベントは親が受け取る */
+      width: 50px; height: 50px; background: rgba(0, 210, 255, 0.8); border-radius: 50%; position: absolute;
+      top: 50%; left: 50%; transform: translate(-50%, -50%); box-shadow: 0 0 10px rgba(0, 210, 255, 0.5); pointer-events: none;
   }}
 
-  /* 右側ジャンプボタン */
-  .action-btn-area {{
-    pointer-events: auto;
-    margin-bottom: 40px; margin-right: 60px; 
-  }}
-
+  .action-btn-area {{ pointer-events: auto; margin-bottom: 40px; margin-right: 60px; }}
   .touch-btn {{
-    width: 90px; height: 90px; border-radius: 50%; background: rgba(255, 255, 255, 0.2); border: 2px solid rgba(255, 255, 255, 0.6); color: white; font-size: 40px; display: flex; justify-content: center; align-items: center; touch-action: manipulation; user-select: none; -webkit-user-select: none; cursor: pointer; text-shadow: 1px 1px 2px black;
+    width: 90px; height: 90px; border-radius: 50%; background: rgba(255, 255, 255, 0.2); border: 2px solid rgba(255, 255, 255, 0.6);
+    color: white; font-size: 40px; display: flex; justify-content: center; align-items: center; touch-action: manipulation;
+    user-select: none; -webkit-user-select: none; cursor: pointer; text-shadow: 1px 1px 2px black;
   }}
   .touch-btn:active {{ background: rgba(255, 255, 255, 0.5); }}
 
@@ -232,14 +250,10 @@ game_html = f"""
     <div id="auto-restart-msg"></div>
 </div>
 
-<!-- ★修正: モバイルコントローラー (スティック + ボタン) -->
 <div id="mobile-controls">
-    <!-- 左側: アナログスティック -->
     <div id="joystick-area" class="joystick-area">
         <div id="joystick-knob" class="joystick-knob"></div>
     </div>
-    
-    <!-- 右側: ジャンプ -->
     <div class="action-btn-area">
         <div id="btn-jump" class="touch-btn" style="background: rgba(255, 200, 0, 0.4); width:100px; height:100px; font-size:50px;">▲</div>
     </div>
@@ -253,11 +267,31 @@ game_html = f"""
   let isPaused = false;
   const orientationWarning = document.getElementById('orientation-warning');
 
+  // ★修正: 画面向きチェック & Canvasサイズ調整
   function checkOrientationAndResize() {{
       if (isMobile) {{
-          if (window.innerHeight > window.innerWidth) {{ isPaused = true; orientationWarning.style.display = 'flex'; }} 
-          else {{ isPaused = false; orientationWarning.style.display = 'none'; canvas.width = window.innerWidth - 20; }}
-      }} else {{ canvas.width = 800; }}
+          if (window.innerHeight > window.innerWidth) {{
+              // 縦持ち：ポーズ
+              isPaused = true;
+              orientationWarning.style.display = 'flex';
+              // 念のためサイズ維持
+              canvas.width = window.innerWidth - 20;
+              canvas.height = 400;
+          }} else {{
+              // 横持ち：ゲーム再開 & PC相当の解像度(800x400)に固定
+              // CSSの object-fit で画面にフィットさせる
+              isPaused = false;
+              orientationWarning.style.display = 'none';
+              
+              // ★ここが重要: 内部解像度をPCと同じにする
+              canvas.width = 800;
+              canvas.height = 400;
+          }}
+      }} else {{
+          // PC
+          canvas.width = 800;
+          canvas.height = 400;
+      }}
   }}
   window.addEventListener('resize', checkOrientationAndResize);
   checkOrientationAndResize();
@@ -279,116 +313,60 @@ game_html = f"""
   const titleImg = document.getElementById('title-img');
   const startText = document.getElementById('start-text');
 
-  // ==========================================
-  // ★ ジョイスティック制御ロジック
-  // ==========================================
+  // ... (ジョイスティック等のロジックは変更なし)
   const joystickArea = document.getElementById('joystick-area');
   const joystickKnob = document.getElementById('joystick-knob');
   let stickTouchId = null;
 
   if (joystickArea) {{
-      const maxRadius = 40; // スティックが動ける最大半径
-      const center = {{ x: 60, y: 60 }}; // エリアの中心 (120/2)
-
+      const maxRadius = 40; const center = {{ x: 60, y: 60 }}; 
       joystickArea.addEventListener('touchstart', (e) => {{
-          e.preventDefault();
-          // 最初のタッチを採用
-          const touch = e.changedTouches[0];
-          stickTouchId = touch.identifier;
-          startBGM();
-          updateStick(touch);
+          e.preventDefault(); const touch = e.changedTouches[0]; stickTouchId = touch.identifier; startBGM(); updateStick(touch);
       }}, {{passive: false}});
-
       joystickArea.addEventListener('touchmove', (e) => {{
           e.preventDefault();
-          for (let i = 0; i < e.changedTouches.length; i++) {{
-              if (e.changedTouches[i].identifier === stickTouchId) {{
-                  updateStick(e.changedTouches[i]);
-                  break;
-              }}
-          }}
+          for (let i = 0; i < e.changedTouches.length; i++) {{ if (e.changedTouches[i].identifier === stickTouchId) {{ updateStick(e.changedTouches[i]); break; }} }}
       }}, {{passive: false}});
-
       const endStick = (e) => {{
           e.preventDefault();
           for (let i = 0; i < e.changedTouches.length; i++) {{
               if (e.changedTouches[i].identifier === stickTouchId) {{
-                  stickTouchId = null;
-                  // ノブを中心に
-                  joystickKnob.style.transform = `translate(-50%, -50%) translate(0px, 0px)`;
-                  // 入力解除
-                  keys.left = false;
-                  keys.right = false;
-                  keys.down = false;
-                  break;
+                  stickTouchId = null; joystickKnob.style.transform = `translate(-50%, -50%) translate(0px, 0px)`;
+                  keys.left = false; keys.right = false; keys.down = false; break;
               }}
           }}
       }};
-      joystickArea.addEventListener('touchend', endStick);
-      joystickArea.addEventListener('touchcancel', endStick);
+      joystickArea.addEventListener('touchend', endStick); joystickArea.addEventListener('touchcancel', endStick);
 
       function updateStick(touch) {{
           const rect = joystickArea.getBoundingClientRect();
-          let x = touch.clientX - rect.left - center.x;
-          let y = touch.clientY - rect.top - center.y;
-          
-          // 距離制限
+          let x = touch.clientX - rect.left - center.x; let y = touch.clientY - rect.top - center.y;
           const distance = Math.sqrt(x*x + y*y);
-          if (distance > maxRadius) {{
-              const angle = Math.atan2(y, x);
-              x = Math.cos(angle) * maxRadius;
-              y = Math.sin(angle) * maxRadius;
-          }}
-
-          // ノブ移動
+          if (distance > maxRadius) {{ const angle = Math.atan2(y, x); x = Math.cos(angle) * maxRadius; y = Math.sin(angle) * maxRadius; }}
           joystickKnob.style.transform = `translate(-50%, -50%) translate(${{x}}px, ${{y}}px)`;
-
-          // 入力判定（デッドゾーンあり）
           keys.left = false; keys.right = false; keys.down = false;
-          
-          if (distance > 10) {{ // 少し倒したら反応
-              // X方向が支配的か、Y方向が支配的か
-              if (Math.abs(x) > Math.abs(y)) {{
-                  if (x > 0) keys.right = true;
-                  else keys.left = true;
-              }} else {{
-                  if (y > 0) keys.down = true;
-                  // 上入力は使わない
-              }}
-          }}
+          if (distance > 10) {{ if (Math.abs(x) > Math.abs(y)) {{ if (x > 0) keys.right = true; else keys.left = true; }} else {{ if (y > 0) keys.down = true; }} }}
       }}
   }}
   
-  // ジャンプボタン
   const btnJump = document.getElementById('btn-jump');
-  if(btnJump) {{
-      btnJump.addEventListener('touchstart', (e) => {{
-          e.preventDefault();
-          doJump(); 
-      }});
-  }}
+  if(btnJump) {{ btnJump.addEventListener('touchstart', (e) => {{ e.preventDefault(); doJump(); }}); }}
 
-  // ... (以下、ゲームロジックは変更なし)
+  // ... (以下ゲームロジック変更なし)
   let screenShake = {{ x: 0, y: 0, duration: 0, intensity: 0 }};
   function addShake(intensity, duration) {{ screenShake.intensity = intensity; screenShake.duration = duration; }}
   function updateShake() {{
-      if (screenShake.duration > 0) {{
-          screenShake.x = (Math.random() - 0.5) * screenShake.intensity;
-          screenShake.y = (Math.random() - 0.5) * screenShake.intensity;
-          screenShake.duration--;
-      }} else {{ screenShake.x = 0; screenShake.y = 0; }}
+      if (screenShake.duration > 0) {{ screenShake.x = (Math.random() - 0.5) * screenShake.intensity; screenShake.y = (Math.random() - 0.5) * screenShake.intensity; screenShake.duration--; }} 
+      else {{ screenShake.x = 0; screenShake.y = 0; }}
   }}
 
   let particles = [];
   function spawnParticles(x, y, color, count = 8) {{
-      for (let i = 0; i < count; i++) {{
-          particles.push({{ x: x, y: y, vx: (Math.random() - 0.5) * 8, vy: (Math.random() - 0.5) * 8, life: 30 + Math.random() * 20, size: 4 + Math.random() * 4, color: color }});
-      }}
+      for (let i = 0; i < count; i++) {{ particles.push({{ x: x, y: y, vx: (Math.random() - 0.5) * 8, vy: (Math.random() - 0.5) * 8, life: 30 + Math.random() * 20, size: 4 + Math.random() * 4, color: color }}); }}
   }}
   function updateAndDrawParticles() {{
       for (let i = 0; i < particles.length; i++) {{
-          let p = particles[i];
-          p.x += p.vx; p.y += p.vy; p.vy += 0.2; p.life--; p.size *= 0.95;
+          let p = particles[i]; p.x += p.vx; p.y += p.vy; p.vy += 0.2; p.life--; p.size *= 0.95;
           if (p.life <= 0 || p.size < 0.5) {{ particles.splice(i, 1); i--; }}
       }}
   }}
@@ -735,6 +713,7 @@ game_html = f"""
         e.x += e.dx;
         e.animTimer++; if (e.animTimer > 10) {{ e.animIndex = (e.animIndex + 1) % 2; e.animTimer = 0; }}
         if (e.type === 'flying') {{ e.angle += 0.1; e.y += Math.sin(e.angle) * 2; }} 
+
         if (player.x < e.x + e.width && player.x + player.width > e.x && playerHitY < e.y + e.height && playerHitY + playerHitH > e.y) {{ 
             const isStomp = (player.dy > 0 && player.y + player.height < e.y + e.height * 0.6) || stompedThisFrame || superMode;
             if (isStomp) {{ 
@@ -808,7 +787,9 @@ game_html = f"""
     }}
 
     ctx.save();
-    if (superMode) {{ if (Math.floor(Date.now() / 50) % 2 === 0) {{ ctx.globalAlpha = 0.8; ctx.filter = 'brightness(1.5) drop-shadow(0 0 5px gold)'; }} }} else if (slowMode) {{ ctx.filter = 'hue-rotate(270deg)'; }} else if (isInvincible) {{ if (Math.floor(Date.now() / 100) % 2 === 0) ctx.globalAlpha = 0.5; }}
+    if (superMode) {{ if (Math.floor(Date.now() / 50) % 2 === 0) {{ ctx.globalAlpha = 0.8; ctx.filter = 'brightness(1.5) drop-shadow(0 0 5px gold)'; }} }} 
+    else if (slowMode) {{ ctx.filter = 'hue-rotate(270deg)'; }} 
+    else if (isInvincible) {{ if (Math.floor(Date.now() / 100) % 2 === 0) ctx.globalAlpha = 0.5; }}
     
     let currentWrapper = null;
     if (player.state === 'dead') currentWrapper = playerAnim.dead; else if (player.state === 'squat') currentWrapper = playerAnim.squat; else if (playerAnim[player.state] && playerAnim[player.state][player.animIndex]) currentWrapper = playerAnim[player.state][player.animIndex];
