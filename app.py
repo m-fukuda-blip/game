@@ -151,13 +151,13 @@ game_html = f"""
   }}
 
   .touch-btn {{
-    width: 80px;
-    height: 80px;
+    width: 90px;
+    height: 90px;
     border-radius: 50%;
     background: rgba(255, 255, 255, 0.2);
     border: 2px solid rgba(255, 255, 255, 0.6);
     color: white;
-    font-size: 35px;
+    font-size: 40px;
     display: flex;
     justify-content: center;
     align-items: center;
@@ -298,8 +298,7 @@ game_html = f"""
       for (let i = 0; i < particles.length; i++) {{
           let p = particles[i];
           p.x += p.vx; p.y += p.vy; p.vy += 0.2; p.life--; p.size *= 0.95;
-          // ★修正: コンテキスト操作はここでは行わず、座標更新のみにする
-          // ctx.fillStyle = p.color; ctx.globalAlpha = ... などの記述を削除
+          // 描画はdraw関数内で行うため計算のみ
           if (p.life <= 0 || p.size < 0.5) {{ particles.splice(i, 1); i--; }}
       }}
   }}
@@ -393,7 +392,9 @@ game_html = f"""
 
   const player = {{ 
       x: 200, // 初期位置は左寄り
-      y: 0, width: 60, height: 60, speed: 5, dx: 0, dy: 0, 
+      y: 0, width: 60, height: 60, 
+      speed: 10, // ★修正3: 移動速度2倍
+      dx: 0, dy: 0, 
       jumping: false, jumpCount: 0, maxJump: 2,
       state: 'idle', animIndex: 0, animTimer: 0, 
       animSpeedIdle: 15, animSpeedRun: 8, idlePingPong: 1, combo: 0 
@@ -539,10 +540,9 @@ game_html = f"""
 
       // ★ 敵・アイテムの配置（地形生成時に配置する）
       if (gapWidth === 0 && width > 100) {{
-           // この地形の上に敵を置くか？
-           if (Math.random() < 0.5) spawnEnemyOnTerrain(newX, width, topY);
-           // アイテムを置くか？
-           if (Math.random() < 0.4) spawnItemOnTerrain(newX, width, topY);
+           // ★修正1: 出現頻度2倍 (0.5->1.0, 0.4->0.8)
+           if (Math.random() < 1.0) spawnEnemyOnTerrain(newX, width, topY);
+           if (Math.random() < 0.8) spawnItemOnTerrain(newX, width, topY);
       }}
   }}
   
@@ -620,14 +620,22 @@ game_html = f"""
     }}
   }}
 
+  // ★ 雲の更新 (修正2: パララックス考慮の判定)
   function updateClouds() {{
     for(let c of clouds) {{
-        // 雲は独自の速度で動く + カメラの動きとは独立させる（パララックスは描画でやる）
         c.x -= c.speed;
-        // 画面左端（カメラ基準）より消えたら右端（カメラ基準）へ
-        if (c.x < cameraX - 200) {{
-            c.x = cameraX + canvas.width + 200 + Math.random() * 200;
-            c.y = Math.random() * 200;
+        
+        // 描画位置(parallaxX) = c.x + cameraX * 0.8
+        // 画面左端(cameraX) より左(-200)に行ったら消える判定
+        // c.x + cameraX * 0.8 < cameraX - 200
+        // c.x < 0.2 * cameraX - 200
+        
+        if(c.x < 0.2 * cameraX - 200) {{ 
+            // 右端から再出現させる
+            // c.x = 0.2 * cameraX + 800 + random
+            c.x = 0.2 * cameraX + canvas.width + 200 + Math.random() * 200; 
+            c.y = Math.random() * 150; // Y座標もランダムに
+            c.imgIndex = Math.floor(Math.random() * 4);
         }}
     }}
   }}
