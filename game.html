@@ -574,12 +574,15 @@
     if (isInvincible) { invincibleTimer--; if (invincibleTimer <= 0) isInvincible = false; }
      
     // Debug Command Check (K + O)
-    if (keys.k && keys.o && score < 9999) {
-        score = 9999;
+    if (keys.k && keys.o && score < 10000) {
+        score = 10000;
         scoreEl.innerText = score;
         updateLevel();
         playSound('powerup');
-        floatingTexts.push({ x: player.x, y: player.y - 60, text: "DEBUG: SCORE 9999", life: 120, dy: -0.5 });
+        floatingTexts.push({ x: player.x, y: player.y - 60, text: "DEBUG: SCORE 10000 + CROWN", life: 120, dy: -0.5 });
+        
+        // Spawn Crown in front of player
+        items.push({ x: player.x + 150, y: player.y - 100, width: 45, height: 45, dx: 0, isCollected: false, animIndex: 0, animTimer: 0, type: 'crown' });
     }
 
     let statusText = "";
