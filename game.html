@@ -342,6 +342,7 @@
   const capsuleImgWrapper = loadResized("https://raw.githubusercontent.com/m-fukuda-blip/game/main/capsule.png", 45, 45);
   const mutekiImgWrapper = loadResized("https://raw.githubusercontent.com/m-fukuda-blip/game/main/muteki.png", 45, 45);
   const jyamaImgWrapper = loadResized("https://raw.githubusercontent.com/m-fukuda-blip/game/main/jyama.png", 45, 45);
+  const crownImgWrapper = loadResized("https://raw.githubusercontent.com/m-fukuda-blip/game/main/crown.png", 45, 45);
   const itemEffectAnim = [];
   for(let i=1; i<=3; i++) itemEffectAnim.push(loadResized(`https://raw.githubusercontent.com/m-fukuda-blip/game/main/ItemAction0${i}.png`, 45, 45));
   const cloudImgWrappers = [];
@@ -354,6 +355,8 @@
   let frameCount = 0, nextEnemySpawn = 0, nextItemSpawn = 0;
   let facingRight = true, isInvincible = false, invincibleTimer = 0, terrainSegments = [];
   let superMode = false, superModeTimer = 0, slowMode = false, slowModeTimer = 0;
+  // ★王冠ボーナス用の変数追加
+  let crownBonusMode = false, crownBonusTimer = 0;
   let floatingTexts = [], autoRestartTimer = null;
   let cameraX = 0, lastGeneratedX = 0;
   let platforms = [], checkpoints = [], nextCheckpointDist = 800 * 10; 
@@ -478,8 +481,21 @@
 
   function spawnItemOnTerrain(tx, tw, ty) {
       const r = Math.random(); let type = 'coin';
-      if (r < 0.005) type = 'star'; else if (r < 0.035) type = 'trap'; else if (r < 0.045) type = 'heal'; else type = 'coin';
-      let ix = tx + Math.random() * (tw - 50) + 25; let iy = ty - 45 - Math.random() * 100; 
+      // ★王冠の出現条件: スコア10000以上かつ低確率(1%)
+      if (score >= 10000 && r < 0.01) type = 'crown';
+      else if (r < 0.005) type = 'star'; 
+      else if (r < 0.035) type = 'trap'; 
+      else if (r < 0.045) type = 'heal'; 
+      else type = 'coin';
+
+      let ix = tx + Math.random() * (tw - 50) + 25; 
+      let iy = ty - 45 - Math.random() * 100;
+      
+      // ★王冠は高い位置に出現させる
+      if (type === 'crown') {
+          iy = ty - 150 - Math.random() * 50; 
+      }
+      
       items.push({ x: ix, y: iy, width: 45, height: 45, dx: 0, isCollected: false, animIndex: 0, animTimer: 0, type: type }); 
   }
    
@@ -509,6 +525,8 @@
     gameOver = false; frameCount = 0; isInvincible = false; nextEnemySpawn = 0; nextItemSpawn = 0;
     scoreEl.innerText = score; levelEl.innerText = level;
     superMode = false; superModeTimer = 0; slowMode = false; slowModeTimer = 0; statusMsgEl.innerText = "";
+    // ★王冠ボーナス初期化
+    crownBonusMode = false; crownBonusTimer = 0;
 
     isTitle = true; titleScreen.style.display = 'flex';
     titleImg.style.animation = 'none'; void titleImg.offsetWidth; titleImg.style.animation = 'slideUpFade 2s forwards';
@@ -544,9 +562,20 @@
      
     let statusText = "";
     if (superMode) { superModeTimer--; statusText += "🌟SUPER MODE! "; if (superModeTimer <= 0) superMode = false; }
+    // ★王冠ボーナス処理
+    if (crownBonusMode) { 
+        crownBonusTimer--; 
+        statusText += "👑BONUS x3 "; 
+        if (crownBonusTimer <= 0) crownBonusMode = false; 
+    }
     if (slowMode) { slowModeTimer--; statusText += "🐢SLOW... "; if (slowModeTimer <= 0) slowMode = false; }
     statusMsgEl.innerText = statusText;
-    if (superMode) statusMsgEl.style.color = "gold"; else if (slowMode) statusMsgEl.style.color = "violet"; else statusMsgEl.innerText = "";
+    
+    // 文字色の優先順位
+    if (superMode) statusMsgEl.style.color = "gold"; 
+    else if (crownBonusMode) statusMsgEl.style.color = "orange";
+    else if (slowMode) statusMsgEl.style.color = "violet"; 
+    else statusMsgEl.innerText = "";
 
     let currentSpeed = player.speed;
     if (slowMode) currentSpeed *= 0.5;
@@ -589,6 +618,12 @@
     for (let i = 0; i < items.length; i++) { 
         let item = items[i]; 
         if (item.x + item.width < cameraX - 100) { items.splice(i, 1); i--; continue; }
+        
+        // ★王冠のふわふわ動作 (Y座標をSin波で揺らす)
+        if (item.type === 'crown' && !item.isCollected) {
+            item.y += Math.sin(frameCount * 0.1) * 2;
+        }
+
         if (item.isCollected) {
             if (item.type === 'coin') { item.animTimer++; if (item.animTimer > 5) { item.animIndex++; item.animTimer = 0; } if (item.animIndex >= 3) { items.splice(i, 1); i--; } } 
             else { item.animTimer++; if (item.animTimer > 30) { items.splice(i, 1); i--; } }
@@ -601,6 +636,13 @@
                 else if (item.type === 'heal') { hp = 3; updateHearts(); playSound('heal'); spawnParticles(item.x, item.y, 'pink', 8); } 
                 else if (item.type === 'star') { superMode = true; superModeTimer = 900; isInvincible = true; invincibleTimer = 900; slowMode = false; slowModeTimer = 0; playSound('powerup'); spawnParticles(item.x, item.y, 'yellow', 10); } 
                 else if (item.type === 'trap') { if (!superMode) { slowMode = true; slowModeTimer = 600; playSound('bad'); spawnParticles(item.x, item.y, 'purple', 8); } }
+                // ★王冠取得時の効果
+                else if (item.type === 'crown') {
+                    crownBonusMode = true; crownBonusTimer = 1800; // 30秒
+                    playSound('powerup');
+                    spawnParticles(item.x, item.y, 'orange', 10);
+                    floatingTexts.push({ x: player.x, y: player.y - 40, text: "BONUS x3", life: 90, dy: -0.5 });
+                }
                 scoreEl.innerText = score; updateLevel(); 
             }
         }
@@ -620,6 +662,13 @@
                 enemies.splice(i, 1); i--; 
                 if (!superMode) { player.dy = -10; stompedThisFrame = true; }
                 player.combo++; let multiplier = Math.pow(2, player.combo - 1); let bonusPoints = 100 * multiplier;
+                
+                // ★王冠ボーナス効果適用
+                if (crownBonusMode) {
+                    bonusPoints *= 3;
+                    floatingTexts.push({ x: player.x, y: player.y - 40, text: "CROWN BONUS", life: 60, dy: -1.0 });
+                }
+
                 score += bonusPoints; scoreEl.innerText = score; playSound('coin'); updateLevel(); 
                 if (multiplier > 1) { floatingTexts.push({ x: player.x, y: player.y - 20, text: "BONUS x" + multiplier, life: 60, dy: -1.5 }); }
                 spawnParticles(e.x, e.y, 'red', 8);
@@ -681,11 +730,20 @@
             if (item.type === 'coin') { let effectWrapper = itemEffectAnim[item.animIndex]; if(effectWrapper) drawObj(effectWrapper, item.x, item.y, item.width, item.height, 'yellow'); }
             else {
                 ctx.save(); if (Math.floor(Date.now() / 50) % 2 === 0) ctx.globalAlpha = 0.2; else ctx.globalAlpha = 0.8;
-                if (item.type === 'heal') drawObj(capsuleImgWrapper, item.x, item.y, item.width, item.height, 'pink'); else if (item.type === 'star') drawObj(mutekiImgWrapper, item.x, item.y, item.width, item.height, 'yellow'); else if (item.type === 'trap') drawObj(jyamaImgWrapper, item.x, item.y, item.width, item.height, 'purple');
+                if (item.type === 'heal') drawObj(capsuleImgWrapper, item.x, item.y, item.width, item.height, 'pink'); 
+                else if (item.type === 'star') drawObj(mutekiImgWrapper, item.x, item.y, item.width, item.height, 'yellow'); 
+                else if (item.type === 'trap') drawObj(jyamaImgWrapper, item.x, item.y, item.width, item.height, 'purple');
+                // ★王冠のエフェクト
+                else if (item.type === 'crown') drawObj(crownImgWrapper, item.x, item.y, item.width, item.height, 'orange');
                 ctx.restore();
             }
         } else {
-            if (item.type === 'coin') drawObj(itemImgWrapper, item.x, item.y, item.width, item.height, 'gold'); else if (item.type === 'heal') drawObj(capsuleImgWrapper, item.x, item.y, item.width, item.height, 'pink'); else if (item.type === 'star') drawObj(mutekiImgWrapper, item.x, item.y, item.width, item.height, 'yellow'); else if (item.type === 'trap') drawObj(jyamaImgWrapper, item.x, item.y, item.width, item.height, 'purple');
+            if (item.type === 'coin') drawObj(itemImgWrapper, item.x, item.y, item.width, item.height, 'gold'); 
+            else if (item.type === 'heal') drawObj(capsuleImgWrapper, item.x, item.y, item.width, item.height, 'pink'); 
+            else if (item.type === 'star') drawObj(mutekiImgWrapper, item.x, item.y, item.width, item.height, 'yellow'); 
+            else if (item.type === 'trap') drawObj(jyamaImgWrapper, item.x, item.y, item.width, item.height, 'purple');
+            // ★王冠の描画
+            else if (item.type === 'crown') drawObj(crownImgWrapper, item.x, item.y, item.width, item.height, 'orange');
         }
     }
 
@@ -695,6 +753,8 @@
 
     ctx.save();
     if (superMode) { if (Math.floor(Date.now() / 50) % 2 === 0) { ctx.globalAlpha = 0.8; ctx.filter = 'brightness(1.5) drop-shadow(0 0 5px gold)'; } } 
+    // ★王冠ボーナス中のプレイヤーエフェクト
+    else if (crownBonusMode) { if (Math.floor(Date.now() / 50) % 2 === 0) { ctx.filter = 'drop-shadow(0 0 5px orange)'; } }
     else if (slowMode) { ctx.filter = 'hue-rotate(270deg)'; } 
     else if (isInvincible) { if (Math.floor(Date.now() / 100) % 2 === 0) ctx.globalAlpha = 0.5; }
      
