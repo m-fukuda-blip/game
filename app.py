@@ -6,7 +6,7 @@ st.set_page_config(page_title="Action Game with Ranking & Animation", layout="wi
 # タイトル画像を表示
 st.image("https://raw.githubusercontent.com/m-fukuda-blip/game/main/gametitlefix.png", use_column_width=True)
 
-st.caption("機能：❤️ライフ / 🆙レベル / ☁️背景変化 / 🔊音 / 🏆ランク / 🏃‍♂️アニメ / 🎵BGM / ✨アイテム / 🧗‍♂️段差 / 💥コンボ / 🫨シェイク / 📏サイズ / 🦘2段ジャンプ / ✨撃破演出 / ⬇️しゃがみ / ⏩横スクロール")
+st.caption("機能：❤️ライフ / 🆙レベル / ☁️背景変化 / 🔊音 / 🏆ランク / 🏃‍♂️アニメ / 🎵BGM / ✨アイテム / 🧗‍♂️段差 / 💥コンボ / 🫨シェイク / 📏サイズ / 🦘2段ジャンプ / ✨撃破演出 / ⬇️しゃがみ / ⏩横スクロール / 🧱空中足場 / ⛩️ゲート")
 st.write("操作方法: **W** ジャンプ(2回可) / **A** 左移動 / **D** 右移動 / **S** しゃがみ / **R** リセット / **F** 全画面")
 
 # ==========================================
@@ -230,7 +230,7 @@ game_html = f"""
 <div id="mobile-controls">
     <div class="control-group">
         <div id="btn-left" class="touch-btn">◀</div>
-        <!-- ★追加: しゃがみボタン -->
+        <!-- しゃがみボタン -->
         <div id="btn-down" class="touch-btn">▼</div>
         <div id="btn-right" class="touch-btn">▶</div>
     </div>
@@ -298,7 +298,7 @@ game_html = f"""
       for (let i = 0; i < particles.length; i++) {{
           let p = particles[i];
           p.x += p.vx; p.y += p.vy; p.vy += 0.2; p.life--; p.size *= 0.95;
-          // 描画はdraw関数内で行うため計算のみ
+          // 描画はdraw関数内で行う
           if (p.life <= 0 || p.size < 0.5) {{ particles.splice(i, 1); i--; }}
       }}
   }}
@@ -389,11 +389,15 @@ game_html = f"""
   // ★ 追加: カメラ位置とワールド生成用変数
   let cameraX = 0;
   let lastGeneratedX = 0;
+  
+  // ★ 追加: 空中コンクリートとチェックポイント
+  let platforms = [];
+  let checkpoints = [];
+  let nextCheckpointDist = 800 * 10; // 初回は画面10個分先
 
   const player = {{ 
-      x: 200, // 初期位置は左寄り
-      y: 0, width: 60, height: 60, 
-      speed: 10, // ★修正3: 移動速度2倍
+      x: 200, y: 0, width: 60, height: 60, 
+      speed: 7, // ★修正1: 移動速度 7 に変更
       dx: 0, dy: 0, 
       jumping: false, jumpCount: 0, maxJump: 2,
       state: 'idle', animIndex: 0, animTimer: 0, 
@@ -462,6 +466,7 @@ game_html = f"""
     else if (type === 'heal') {{ osc.type = 'sine'; osc.frequency.setValueAtTime(400, now); osc.frequency.linearRampToValueAtTime(800, now + 0.2); gain.gain.setValueAtTime(0.1, now); gain.gain.linearRampToValueAtTime(0, now + 0.3); osc.start(now); osc.stop(now + 0.3); }} 
     else if (type === 'powerup') {{ osc.type = 'square'; osc.frequency.setValueAtTime(440, now); osc.frequency.setValueAtTime(880, now + 0.1); gain.gain.setValueAtTime(0.1, now); gain.gain.linearRampToValueAtTime(0, now + 0.5); osc.start(now); osc.stop(now + 0.5); }} 
     else if (type === 'bad') {{ osc.type = 'sawtooth'; osc.frequency.setValueAtTime(300, now); osc.frequency.linearRampToValueAtTime(150, now + 0.3); gain.gain.setValueAtTime(0.1, now); gain.gain.linearRampToValueAtTime(0, now + 0.3); osc.start(now); osc.stop(now + 0.3); }}
+    else if (type === 'gate') {{ osc.type = 'sine'; osc.frequency.setValueAtTime(800, now); osc.frequency.linearRampToValueAtTime(1200, now + 0.3); gain.gain.setValueAtTime(0.2, now); gain.gain.linearRampToValueAtTime(0, now + 0.4); osc.start(now); osc.stop(now + 0.4); }}
   }}
   function doJump() {{
       if (!gameOver && !isTitle) {{
@@ -492,24 +497,30 @@ game_html = f"""
 
   // ★ 横スクロール用の地形生成ロジック（無限生成）
   function updateTerrain() {{
-      // 古い地形の削除 (画面左端よりずっと左に行ったもの)
       const deleteThreshold = cameraX - 200;
       for (let i = 0; i < terrainSegments.length; i++) {{
-          if (terrainSegments[i].x + terrainSegments[i].width < deleteThreshold) {{
-              terrainSegments.splice(i, 1);
-              i--;
-          }}
+          if (terrainSegments[i].x + terrainSegments[i].width < deleteThreshold) {{ terrainSegments.splice(i, 1); i--; }}
+      }}
+      for (let i = 0; i < platforms.length; i++) {{
+          if (platforms[i].x + platforms[i].width < deleteThreshold) {{ platforms.splice(i, 1); i--; }}
+      }}
+      for (let i = 0; i < checkpoints.length; i++) {{
+          if (checkpoints[i].x + 100 < deleteThreshold) {{ checkpoints.splice(i, 1); i--; }}
       }}
       
-      // 新しい地形の生成 (画面右端より少し先まで埋める)
       const generateThreshold = cameraX + canvas.width + 200;
       while (lastGeneratedX < generateThreshold) {{
           generateNextSegment();
       }}
+      
+      // ★ 修正3: チェックポイント生成 (10画面ごと)
+      if (lastGeneratedX > nextCheckpointDist) {{
+          checkpoints.push({{ x: nextCheckpointDist, passed: false }});
+          nextCheckpointDist += 800 * 10;
+      }}
   }}
 
   function generateNextSegment() {{
-      // 最初のセグメントは平ら
       if (terrainSegments.length === 0) {{
           terrainSegments.push({{ x: 0, width: 800, topY: BASE_GROUND_Y, level: 0 }});
           lastGeneratedX = 800;
@@ -517,30 +528,34 @@ game_html = f"""
       }}
 
       let prevSeg = terrainSegments[terrainSegments.length - 1];
-      
-      // 穴を作るかどうか (前の地形がある程度長い場合のみ)
       let gapWidth = 0;
-      // 20%の確率で穴、ただし連続生成は避けるロジックなどは簡易的に
-      if (Math.random() < 0.25 && prevSeg.width > 100) {{
-          gapWidth = Math.random() * 100 + 80; // 80~180pxの穴
-      }}
+      if (Math.random() < 0.25 && prevSeg.width > 100) gapWidth = Math.random() * 100 + 80; 
 
       let newX = lastGeneratedX + gapWidth;
-      let width = Math.random() * 200 + 150; // 足場の幅
+      let width = Math.random() * 200 + 150; 
       
-      // 高さの決定 (前回の高さを基準に上下させる)
       const SEG_HEIGHTS = [BASE_GROUND_Y, BASE_GROUND_Y - 50, BASE_GROUND_Y - 100];
       let prevLevel = prevSeg.level !== undefined ? prevSeg.level : 0;
-      let delta = Math.floor(Math.random() * 3) - 1; // -1, 0, 1
+      let delta = Math.floor(Math.random() * 3) - 1; 
       let newLevel = Math.min(2, Math.max(0, prevLevel + delta));
       let topY = SEG_HEIGHTS[newLevel];
 
       terrainSegments.push({{ x: newX, width: width, topY: topY, level: newLevel }});
       lastGeneratedX = newX + width;
 
-      // ★ 敵・アイテムの配置（地形生成時に配置する）
+      // ★ 修正2: 空中コンクリート生成 (30%の確率)
+      if (Math.random() < 0.3) {{
+          let pW = player.width * (3 + Math.random() * 2); // 3~5倍幅
+          let pX = newX + Math.random() * (width - pW); 
+          let pY = topY - 100 - Math.random() * 80; 
+          if (pY < 100) pY = 100;
+          platforms.push({{ x: pX, y: pY, width: pW, height: 20 }});
+          
+          // プラットフォーム上にも敵やアイテム
+          if (Math.random() < 0.5) spawnEnemyOnTerrain(pX, pW, pY);
+      }}
+
       if (gapWidth === 0 && width > 100) {{
-           // ★修正1: 出現頻度2倍 (0.5->1.0, 0.4->0.8)
            if (Math.random() < 1.0) spawnEnemyOnTerrain(newX, width, topY);
            if (Math.random() < 0.8) spawnItemOnTerrain(newX, width, topY);
       }}
@@ -548,95 +563,66 @@ game_html = f"""
   
   function spawnEnemyOnTerrain(tx, tw, ty) {{
       let type = Math.random() < 0.5 ? 'ground' : 'flying';
-      let speedBase = 2 + level * 0.05; // レベルに応じて速くなる
-      
-      let ex = tx + Math.random() * (tw - 60) + 30; // 地形の中央付近
-      let ey = ty - 52; // 地面敵のY座標
+      let speedBase = 2 + level * 0.05; 
+      let ex = tx + Math.random() * (tw - 60) + 30; 
+      let ey = ty - 52; 
 
-      if (type === 'flying') {{
-          ey = ty - 100 - Math.random() * 100; // 空中敵
-      }}
-      // 強敵判定
+      if (type === 'flying') ey = ty - 100 - Math.random() * 100; 
       if (score >= 2000 && Math.random() < 0.3) {{ type = 'hard'; speedBase += 2; }}
       
-      enemies.push({{ 
-          x: ex, y: ey, width: 52, height: 52, 
-          dx: -speedBase, dy: 0, // ワールド座標系でも左に動く＝プレイヤーに向かってくる
-          type: type, angle: 0, animIndex: 0, animTimer: 0 
-      }});
+      enemies.push({{ x: ex, y: ey, width: 52, height: 52, dx: -speedBase, dy: 0, type: type, angle: 0, animIndex: 0, animTimer: 0 }});
   }}
 
   function spawnItemOnTerrain(tx, tw, ty) {{
-      // アイテム出現率
       const r = Math.random();
       let type = 'coin';
-      if (r < 0.005) type = 'star';
-      else if (r < 0.035) type = 'trap';
-      else if (r < 0.045) type = 'heal';
-      else type = 'coin';
+      if (r < 0.005) type = 'star'; else if (r < 0.035) type = 'trap'; else if (r < 0.045) type = 'heal'; else type = 'coin';
 
       let ix = tx + Math.random() * (tw - 50) + 25;
-      let iy = ty - 45 - Math.random() * 100; // 地面より少し上に浮く
+      let iy = ty - 45 - Math.random() * 100; 
       
-      items.push({{ 
-          x: ix, y: iy, width: 45, height: 45, dx: 0, // アイテムは動かない（地面と一緒にスクロール）
-          isCollected: false, animIndex: 0, animTimer: 0, type: type 
-      }}); 
+      items.push({{ x: ix, y: iy, width: 45, height: 45, dx: 0, isCollected: false, animIndex: 0, animTimer: 0, type: type }}); 
   }}
   
+  // ★ 修正: 地形とプラットフォームの両方で地面高さをチェック
   function getGroundYUnderPlayer() {{
     let groundY = null;
-    // プレイヤーの足元(x + width/2)付近にある地形を探す
     let centerX = player.x + player.width / 2;
+    
+    // 地形
     for (let seg of terrainSegments) {{ 
         if (centerX > seg.x && centerX < seg.x + seg.width) {{ 
             if (groundY === null || seg.topY < groundY) groundY = seg.topY; 
         }} 
     }}
+    // プラットフォーム (プレイヤーが上にいる場合のみ有効)
+    for (let p of platforms) {{
+        if (centerX > p.x && centerX < p.x + p.width) {{
+             // 足元がプラットフォームより上にある場合のみ着地対象
+             if (player.y + player.height <= p.y + 20) {{
+                 if (groundY === null || p.y < groundY) groundY = p.y;
+             }}
+        }}
+    }}
     return groundY;
   }}
   
-  // 横移動時の壁判定用
   function getGroundYAtX(x) {{
     let groundY = null;
-    for (let seg of terrainSegments) {{ 
-        if (x >= seg.x && x <= seg.x + seg.width) {{ 
-            if (groundY === null || seg.topY < groundY) groundY = seg.topY; 
-        }} 
-    }}
+    for (let seg of terrainSegments) {{ if (x >= seg.x && x <= seg.x + seg.width) {{ if (groundY === null || seg.topY < groundY) groundY = seg.topY; }} }}
+    // プラットフォームは壁判定には含めない（すり抜け可能にするため）
     return groundY;
   }}
 
   function initClouds() {{
     clouds = [];
-    // 初期生成時に画面内＋少し先に雲を配置
-    for(let i=0; i<8; i++) {{
-        clouds.push({{
-            x: Math.random() * 1200, 
-            y: Math.random() * 200, 
-            speed: Math.random() * 0.3 + 0.1,
-            imgIndex: Math.floor(Math.random() * 4)
-        }});
-    }}
+    for(let i=0; i<8; i++) {{ clouds.push({{ x: Math.random() * 1200, y: Math.random() * 200, speed: Math.random() * 0.3 + 0.1, imgIndex: Math.floor(Math.random() * 4) }}); }}
   }}
 
-  // ★ 雲の更新 (修正2: パララックス考慮の判定)
   function updateClouds() {{
     for(let c of clouds) {{
         c.x -= c.speed;
-        
-        // 描画位置(parallaxX) = c.x + cameraX * 0.8
-        // 画面左端(cameraX) より左(-200)に行ったら消える判定
-        // c.x + cameraX * 0.8 < cameraX - 200
-        // c.x < 0.2 * cameraX - 200
-        
-        if(c.x < 0.2 * cameraX - 200) {{ 
-            // 右端から再出現させる
-            // c.x = 0.2 * cameraX + 800 + random
-            c.x = 0.2 * cameraX + canvas.width + 200 + Math.random() * 200; 
-            c.y = Math.random() * 150; // Y座標もランダムに
-            c.imgIndex = Math.floor(Math.random() * 4);
-        }}
+        if(c.x < 0.2 * cameraX - 200) {{ c.x = 0.2 * cameraX + canvas.width + 200 + Math.random() * 200; c.y = Math.random() * 150; c.imgIndex = Math.floor(Math.random() * 4); }}
     }}
   }}
 
@@ -648,14 +634,15 @@ game_html = f"""
     if (autoRestartTimer) clearInterval(autoRestartTimer);
     autoRestartMsg.style.display = 'none';
 
-    // ★ 座標リセット
     player.x = 200; player.y = 0; player.dx = 0; player.dy = 0;
     cameraX = 0; lastGeneratedX = 0;
     
     player.state = 'idle'; player.animIndex = 0; player.animTimer = 0; player.idlePingPong = 1;
     player.combo = 0; player.jumpCount = 0;
     score = 0; level = 1; gameSpeed = 1.0; hp = 3;
-    enemies = []; items = []; floatingTexts = []; particles = []; terrainSegments = [];
+    enemies = []; items = []; floatingTexts = []; particles = []; terrainSegments = []; 
+    platforms = []; checkpoints = []; nextCheckpointDist = 800 * 10; // リセット
+    
     gameOver = false; frameCount = 0;
     isInvincible = false; nextEnemySpawn = 0; nextItemSpawn = 0;
     scoreEl.innerText = score; levelEl.innerText = level;
@@ -666,7 +653,7 @@ game_html = f"""
     startText.style.opacity = '0'; startText.style.animation = 'none';
     setTimeout(() => {{ startText.style.animation = 'blinkFade 0.5s forwards'; setTimeout(() => {{ titleScreen.style.display = 'none'; isTitle = false; }}, 1000); }}, 2000);
 
-    updateHearts(); initClouds(); updateTerrain(); // 初回の地形生成
+    updateHearts(); initClouds(); updateTerrain(); 
     const startGround = getGroundYUnderPlayer(); 
     const gY = startGround !== null ? startGround : BASE_GROUND_Y; 
     player.y = gY - player.height;
@@ -698,7 +685,6 @@ game_html = f"""
     updateShake(); frameCount++; updateClouds();
     if (isInvincible) {{ invincibleTimer--; if (invincibleTimer <= 0) isInvincible = false; }}
     
-    // ステータス更新
     let statusText = "";
     if (superMode) {{ superModeTimer--; statusText += "🌟SUPER MODE! "; if (superModeTimer <= 0) superMode = false; }}
     if (slowMode) {{ slowModeTimer--; statusText += "🐢SLOW... "; if (slowModeTimer <= 0) slowMode = false; }}
@@ -708,9 +694,7 @@ game_html = f"""
     let currentSpeed = player.speed;
     if (slowMode) currentSpeed *= 0.5;
 
-    // ★ プレイヤー移動処理 (横スクロール対応)
     if (player.state !== 'dead') {{
-        // しゃがみ中は移動不可
         if (player.state !== 'squat') {{
             if (keys.right) player.dx = currentSpeed;
             else if (keys.left) player.dx = -currentSpeed;
@@ -723,12 +707,10 @@ game_html = f"""
         let checkX = player.dx > 0 ? nextX + player.width : nextX;
         let nextGroundY = getGroundYAtX(checkX); 
         
-        // 段差判定
         if (nextGroundY !== null) {{
             if (player.y + player.height > nextGroundY + 5) {{ player.dx = 0; }}
         }}
         
-        // 左端制限 (カメラより左には行けない)
         if (nextX < cameraX) {{
             nextX = cameraX;
             player.dx = 0;
@@ -737,21 +719,22 @@ game_html = f"""
 
     player.x += player.dx; player.y += player.dy; player.dy += GRAVITY;
     
-    // ★ カメラ更新: プレイヤーが画面中央(400px)を超えたらカメラを追従させる
-    let targetCameraX = player.x - 300; // 画面左から300pxの位置にプレイヤーを置くイメージ
+    let targetCameraX = player.x - 300; 
     if (targetCameraX < 0) targetCameraX = 0;
     if (targetCameraX > cameraX) {{
-        cameraX = targetCameraX; // 前進のみ（戻れない）
+        cameraX = targetCameraX; 
     }}
     
-    // ★ 地形無限生成 & 削除
     updateTerrain();
 
-    // 落下判定
     const groundY = getGroundYUnderPlayer();
     if (groundY !== null) {{ 
         if (player.y + player.height >= groundY && player.dy >= 0) {{ 
-            player.y = groundY - player.height; player.dy = 0; player.jumping = false; player.combo = 0; player.jumpCount = 0; 
+            player.y = groundY - player.height; 
+            player.dy = 0; 
+            player.jumping = false; 
+            player.combo = 0; 
+            player.jumpCount = 0; 
         }} 
     }} else {{ 
         if (player.y > canvas.height) {{ 
@@ -763,10 +746,19 @@ game_html = f"""
     updatePlayerAnimation();
     if (gameOver) return;
 
-    // パーティクル更新
-    updateAndDrawParticles(); // 計算のみ
+    // ★ 修正3: ゲート通過判定
+    for (let cp of checkpoints) {{
+        if (!cp.passed && player.x > cp.x) {{
+            cp.passed = true;
+            score += 1500; scoreEl.innerText = score;
+            playSound('gate');
+            spawnParticles(player.x, player.y, 'cyan', 15);
+            floatingTexts.push({{ x: player.x, y: player.y - 40, text: "CHECKPOINT! +1500", life: 90, dy: -0.5 }});
+        }}
+    }}
 
-    // フローティングテキスト更新
+    updateAndDrawParticles();
+
     for (let i = 0; i < floatingTexts.length; i++) {{
         let ft = floatingTexts[i]; ft.y += ft.dy; ft.life--; if (ft.life <= 0) {{ floatingTexts.splice(i, 1); i--; }}
     }}
@@ -774,18 +766,15 @@ game_html = f"""
     let playerHitH = player.height; let playerHitY = player.y;
     if (player.state === 'squat') {{ playerHitH = player.height / 2; playerHitY = player.y + player.height / 2; }}
 
-    // ★ アイテム更新 (削除判定はカメラ基準)
     for (let i = 0; i < items.length; i++) {{ 
         let item = items[i]; 
-        
-        // 画面左外に出たら消す
         if (item.x + item.width < cameraX - 100) {{ items.splice(i, 1); i--; continue; }}
-
         if (item.isCollected) {{
             if (item.type === 'coin') {{ item.animTimer++; if (item.animTimer > 5) {{ item.animIndex++; item.animTimer = 0; }} if (item.animIndex >= 3) {{ items.splice(i, 1); i--; }} }} 
             else {{ item.animTimer++; if (item.animTimer > 30) {{ items.splice(i, 1); i--; }} }}
         }} else {{
-            // アイテムは動かない(dx=0)
+            item.x += item.dx;
+            if (item.x + item.width < cameraX - 100) {{ items.splice(i, 1); i--; continue; }} 
             if (player.x < item.x + item.width && player.x + player.width > item.x && playerHitY < item.y + item.height && playerHitY + playerHitH > item.y) {{
                 item.isCollected = true; item.animIndex = 0; item.animTimer = 0;
                 if (item.type === 'coin') {{ score += 50; playSound('coin'); spawnParticles(item.x, item.y, 'gold', 5); }} 
@@ -797,17 +786,11 @@ game_html = f"""
         }}
     }}
 
-    // ★ 敵更新
     let stompedThisFrame = false; 
     for (let i = 0; i < enemies.length; i++) {{ 
         let e = enemies[i]; 
-        
-        // 画面左外に出たら消す
         if (e.x + e.width < cameraX - 100) {{ enemies.splice(i, 1); i--; continue; }}
-
-        // 敵の移動 (対地速度で動く)
         e.x += e.dx;
-        
         e.animTimer++; if (e.animTimer > 10) {{ e.animIndex = (e.animIndex + 1) % 2; e.animTimer = 0; }}
         if (e.type === 'flying') {{ e.angle += 0.1; e.y += Math.sin(e.angle) * 2; }} 
 
@@ -842,19 +825,11 @@ game_html = f"""
     if (score < 1000) skyColor = '#87CEEB'; else if (score < 3000) skyColor = '#FF7F50'; else if (score < 5000) skyColor = '#191970'; else skyColor = '#4B0082'; 
     ctx.fillStyle = skyColor; ctx.fillRect(0, 0, canvas.width, canvas.height);
     
-    // ★ カメラ適用
     ctx.save();
-    // シェイクも適用
     ctx.translate(screenShake.x - cameraX, screenShake.y);
 
-    // 雲 (パララックス: カメラの影響を弱める)
-    // 雲の絶対座標 c.x に対して、カメラ移動量 cameraX の影響を 0.2倍とかにする
-    // 描画位置 = c.x - cameraX * 0.2
-    // ただし、translate(-cameraX) しているので、
-    // ここで描画位置を c.x + cameraX * 0.8 にすると、結果的に c.x - cameraX * 0.2 になる
     for(let c of clouds) {{
         let wrapper = cloudImgWrappers[c.imgIndex];
-        // 背景っぽく見せるため、カメラと一緒に少し動く
         let parallaxX = c.x + cameraX * 0.8; 
         if (wrapper && wrapper.ready && wrapper.img) {{ ctx.drawImage(wrapper.img, parallaxX, c.y); }} 
         else {{ ctx.fillStyle = 'rgba(255, 255, 255, 0.5)'; ctx.beginPath(); ctx.arc(parallaxX, c.y, 30, 0, Math.PI*2); ctx.fill(); }}
@@ -862,6 +837,30 @@ game_html = f"""
 
     for (let seg of terrainSegments) {{ ctx.fillStyle = '#654321'; ctx.fillRect(seg.x, seg.topY, seg.width, canvas.height - seg.topY); ctx.fillStyle = '#228B22'; ctx.fillRect(seg.x, seg.topY, seg.width, 10); }}
     
+    // ★ 追加: プラットフォーム描画
+    ctx.fillStyle = '#999';
+    ctx.strokeStyle = '#555';
+    for (let p of platforms) {{
+        ctx.fillRect(p.x, p.y, p.width, p.height);
+        ctx.strokeRect(p.x, p.y, p.width, p.height);
+    }}
+
+    // ★ 追加: ゲート描画
+    ctx.strokeStyle = 'yellow';
+    ctx.lineWidth = 5;
+    for (let cp of checkpoints) {{
+        ctx.beginPath();
+        ctx.moveTo(cp.x, BASE_GROUND_Y);
+        ctx.lineTo(cp.x, BASE_GROUND_Y - 150);
+        ctx.arc(cp.x + 40, BASE_GROUND_Y - 150, 40, Math.PI, 0);
+        ctx.lineTo(cp.x + 80, BASE_GROUND_Y);
+        ctx.stroke();
+        if (!cp.passed) {{
+             ctx.fillStyle = 'rgba(0, 255, 255, 0.3)';
+             ctx.fill();
+        }}
+    }}
+
     for (let item of items) {{
         if (item.isCollected) {{
             if (item.type === 'coin') {{ let effectWrapper = itemEffectAnim[item.animIndex]; if(effectWrapper) drawObj(effectWrapper, item.x, item.y, item.width, item.height, 'yellow'); }}
