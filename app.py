@@ -93,10 +93,11 @@ game_html = f"""
       z-index: 5; 
   }}
 
-  /* ★修正: スマホ横持ち時のUI縮小 */
+  /* ★修正: スマホ横持ち時のUI縮小 & 配置調整 */
   @media (max-height: 500px) and (orientation: landscape) {{
       #ui-layer {{
-          top: 10px; left: 15px;
+          top: 60px; /* 操作キャラの少し上くらいまで下げる */
+          left: 40px; /* 左端からも少し離す */
           transform: scale(0.7); /* 70%に縮小 */
           transform-origin: top left;
           width: 100%;
@@ -741,6 +742,14 @@ game_html = f"""
     }}
   }}
 
+  // ★追加: drawParallaxLayer関数定義漏れ修正
+  function drawParallaxLayer(imgWrapper, scrollFactor, y) {{
+      if (!imgWrapper || !imgWrapper.ready) return;
+      const img = imgWrapper.img; const w = img.width;
+      let x = -(cameraX * scrollFactor) % w; if (x > 0) x -= w;
+      while (x < canvas.width) {{ ctx.drawImage(img, x, y); x += w; }}
+  }}
+
   function drawObj(wrapper, x, y, w, h, fallbackColor) {{
     if (wrapper && wrapper.ready && wrapper.img) ctx.drawImage(wrapper.img, x, y, w, h);
     else {{ ctx.fillStyle = fallbackColor; ctx.fillRect(x, y, w, h); }}
@@ -803,14 +812,6 @@ game_html = f"""
     ctx.fillStyle = "yellow"; ctx.font = "bold 20px Courier New"; ctx.strokeStyle = "black"; ctx.lineWidth = 3;
     for (let ft of floatingTexts) {{ ctx.strokeText(ft.text, ft.x, ft.y); ctx.fillText(ft.text, ft.x, ft.y); }}
     ctx.restore();
-  }}
-
-  // ★追加: drawParallaxLayer関数定義漏れ修正
-  function drawParallaxLayer(imgWrapper, scrollFactor, y) {{
-      if (!imgWrapper || !imgWrapper.ready) return;
-      const img = imgWrapper.img; const w = img.width;
-      let x = -(cameraX * scrollFactor) % w; if (x > 0) x -= w;
-      while (x < canvas.width) {{ ctx.drawImage(img, x, y); x += w; }}
   }}
 
   function loop() {{ if (!isPaused) update(); draw(); requestAnimationFrame(loop); }}
