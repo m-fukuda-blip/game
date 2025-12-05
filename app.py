@@ -24,7 +24,7 @@ st.markdown("""
 # タイトル画像を表示
 st.image("https://raw.githubusercontent.com/m-fukuda-blip/game/main/gametitlefix.png", use_column_width=True)
 
-st.caption("機能：❤️ライフ / 🆙レベル / ☁️背景変化 / 🔊音 / 🏆ランク / 🏃‍♂️アニメ / 🎵BGM / ✨アイテム / 🧗‍♂️段差 / 💥コンボ / 🫨シェイク / 📏サイズ / 🦘2段ジャンプ / ✨撃破演出 / ⬇️しゃがみ / ⏩横スクロール / 🧱空中足場 / ⛩️ゲート / 🗻パララックス / 🕹️スティック操作 / 📱画面最適化")
+st.caption("機能：❤️ライフ / 🆙レベル / ☁️背景変化 / 🔊音 / 🏆ランク / 🏃‍♂️アニメ / 🎵BGM / ✨アイテム / 🧗‍♂️段差 / 💥コンボ / 🫨シェイク / 📏サイズ / 🦘2段ジャンプ / ✨撃破演出 / ⬇️しゃがみ / ⏩横スクロール / 🧱空中足場 / ⛩️ゲート / 🗻パララックス / 🕹️スティック操作 / 📱縦画面最適化")
 st.write("操作方法: **W** ジャンプ(2回可) / **A** 左移動 / **D** 右移動 / **S** しゃがみ / **R** リセット / **F** 全画面")
 
 # ==========================================
@@ -37,6 +37,7 @@ game_html = f"""
 <!DOCTYPE html>
 <html>
 <head>
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 <style>
   /* --- 基本スタイル --- */
   html, body {{
@@ -44,70 +45,63 @@ game_html = f"""
     height: 100%;
     margin: 0;
     padding: 0;
+    background-color: #222;
+    overflow: hidden; /* スクロール完全禁止 */
   }}
 
   body {{ 
-    overflow: hidden; 
-    background-color: #222; 
     color: white; 
     font-family: 'Courier New', sans-serif; 
     display: flex; 
+    flex-direction: column;
     justify-content: center; 
     align-items: center; 
-    position: fixed; 
+    position: fixed; /* 画面固定 */
     top: 0; left: 0; right: 0; bottom: 0;
     overscroll-behavior: none;
+    touch-action: none; /* ピンチズーム等禁止 */
     user-select: none;
     -webkit-user-select: none;
     -webkit-touch-callout: none;
-    touch-action: none;
   }}
   
   /* Canvas設定 */
   canvas {{ 
       background-color: #87CEEB; 
-      border: 4px solid #fff; 
+      border: 2px solid #fff; 
       box-shadow: 0 0 20px rgba(0,0,0,0.5);
-      /* デフォルトではサイズ指定なし（JS制御） */
+      /* デフォルトPC用 */
+      width: 800px;
+      height: 400px;
   }}
   
-  /* スマホ横持ち時のCanvas最適化 */
-  @media (max-height: 500px) and (orientation: landscape) {{
+  /* ★修正: スマホ縦持ち時のCanvas最適化 */
+  /* 画面幅に合わせて縮小表示し、横幅を稼ぐ */
+  @media (max-width: 800px) {{
       canvas {{
-          height: 100vh;       /* 画面の高さいっぱいに */
-          width: auto;         /* アスペクト比維持 */
-          max-width: 100vw;    /* 画面幅を超えない */
-          object-fit: contain; /* 全体が収まるように */
-          border: none;        /* 枠線を消してスッキリさせる */
+          width: 100vw;        /* スマホの横幅いっぱいに */
+          height: auto;        /* アスペクト比維持 */
+          max-height: 60vh;    /* 縦長になりすぎないように制限 */
+          object-fit: contain;
       }}
   }}
 
   /* --- UIレイヤー --- */
   #ui-layer {{ 
       position: absolute; 
-      top: 20px; left: 20px; 
-      font-size: 24px; font-weight: bold; 
+      top: 10px; left: 10px; 
+      font-size: 20px; font-weight: bold; 
       color: black; 
       pointer-events: none; 
       text-shadow: 1px 1px 0 #fff; 
       z-index: 5; 
+      background: rgba(255,255,255,0.3);
+      padding: 5px;
+      border-radius: 5px;
   }}
 
-  /* ★修正: スマホ横持ち時のUI配置調整 */
-  @media (max-height: 500px) and (orientation: landscape) {{
-      #ui-layer {{
-          /* キャラクターの頭(300px)の上20px(280px)を最下部にしたい */
-          /* UIの高さを約60pxと仮定して top を設定 */
-          top: 220px; 
-          left: 20px; /* 左端に寄せる */
-          transform: scale(0.7); /* 70%に縮小 */
-          transform-origin: top left;
-          width: 100%;
-      }}
-  }}
-
-  #hearts {{ color: red; font-size: 30px; }}
-  #status-msg {{ font-size: 20px; margin-top: 5px; }}
+  #hearts {{ color: red; font-size: 24px; }}
+  #status-msg {{ font-size: 16px; margin-top: 5px; }}
 
   /* --- タイトル画面 --- */
   #title-screen {{
@@ -117,9 +111,9 @@ game_html = f"""
     pointer-events: none;
   }}
   
-  .title-img {{ max-width: 22%; height: auto; margin-bottom: 20px; opacity: 0; }}
-  @media (max-width: 800px) {{ .title-img {{ max-width: 60%; }} }}
-  .start-text {{ font-size: 40px; color: white; text-shadow: 2px 2px #000; font-weight: bold; opacity: 0; }}
+  .title-img {{ max-width: 40%; height: auto; margin-bottom: 20px; opacity: 0; }}
+  
+  .start-text {{ font-size: 30px; color: white; text-shadow: 2px 2px #000; font-weight: bold; opacity: 0; }}
   
   @keyframes slideUpFade {{ 0% {{ opacity: 0; transform: translateY(100px); }} 100% {{ opacity: 1; transform: translateY(0); }} }}
   @keyframes blinkFade {{ 0% {{ opacity: 0; }} 100% {{ opacity: 1; }} }}
@@ -128,52 +122,31 @@ game_html = f"""
   /* --- ゲームオーバー・ランキング画面 --- */
   #overlay {{ 
     position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); 
-    background: rgba(0, 0, 0, 0.85); border: 4px solid white; border-radius: 10px;
-    padding: 30px; text-align: center; color: white; display: none; width: 400px; 
-    max-width: 90%; z-index: 200; 
+    background: rgba(0, 0, 0, 0.9); border: 2px solid white; border-radius: 10px;
+    padding: 20px; text-align: center; color: white; display: none; width: 90%; max-width: 400px;
+    z-index: 200; 
   }}
 
-  @media (max-height: 500px) {{
-      #overlay {{
-          padding: 10px;
-          transform: translate(-50%, -50%) scale(0.7); 
-          width: 500px; 
-      }}
-      #final-score-display {{ margin-bottom: 5px; font-size: 20px; }}
-      h2 {{ margin: 5px 0; font-size: 24px; }}
-      table {{ margin: 5px 0; font-size: 14px; }}
-      th, td {{ padding: 2px; }}
-      #input-section {{ margin-bottom: 10px; }}
-      #mobile-retry-btn {{ margin: 10px auto 5px auto; padding: 8px 20px; font-size: 18px; }}
-  }}
-
-  h2 {{ margin-top: 0; color: yellow; text-shadow: 2px 2px #f00; }}
+  h2 {{ margin-top: 0; color: yellow; text-shadow: 2px 2px #f00; font-size: 24px; }}
   
-  table {{ width: 100%; border-collapse: collapse; margin: 15px 0; }}
-  th, td {{ border-bottom: 1px solid #555; padding: 5px; text-align: left; }}
+  table {{ width: 100%; border-collapse: collapse; margin: 10px 0; font-size: 14px; }}
+  th, td {{ border-bottom: 1px solid #555; padding: 4px; text-align: left; }}
   th {{ color: #aaa; }}
-  .rank-col {{ width: 40px; text-align: center; }}
+  .rank-col {{ width: 30px; text-align: center; }}
   .score-col {{ text-align: right; color: #0f0; }}
   
-  #input-section {{ margin-bottom: 20px; display: none; }}
-  input[type="text"] {{ padding: 5px; font-size: 16px; width: 150px; text-align: center; user-select: text; -webkit-user-select: text; }}
-  button {{ padding: 5px 15px; font-size: 16px; cursor: pointer; background: #f00; color: white; border: none; font-weight: bold; }}
+  #input-section {{ margin-bottom: 15px; display: none; }}
+  input[type="text"] {{ padding: 5px; font-size: 16px; width: 60%; text-align: center; user-select: text; -webkit-user-select: text; }}
+  button {{ padding: 5px 15px; font-size: 16px; cursor: pointer; background: #f00; color: white; border: none; font-weight: bold; margin-left: 5px; }}
   
   #loading-msg {{ display: none; color: yellow; font-weight: bold; margin-top: 10px; animation: blink 1s infinite; }}
-  .restart-msg {{ margin-top: 20px; font-size: 14px; color: #ccc; }}
+  .restart-msg {{ margin-top: 15px; font-size: 14px; color: #ccc; }}
 
-  #mobile-retry-btn {{
-      display: none; margin: 25px auto 10px auto; padding: 15px 40px; font-size: 24px;
-      background: #00d2ff; border: 3px solid white; color: white; font-weight: bold;
-      border-radius: 50px; cursor: pointer; animation: blink 2s infinite;
-      box-shadow: 0 0 10px rgba(0, 210, 255, 0.8);
-  }}
-  
   #auto-restart-msg {{
-      display: none; color: #00d2ff; margin-top: 20px; font-size: 18px; font-weight: bold; animation: blink 1s infinite;
+      display: none; color: #00d2ff; margin-top: 15px; font-size: 16px; font-weight: bold; animation: blink 1s infinite;
   }}
 
-  /* --- 縦画面警告 --- */
+  /* --- 縦画面警告 (PCでは非表示、スマホで横のとき表示) --- */
   #orientation-warning {{
       display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%;
       background: rgba(0,0,0,0.95); z-index: 9999;
@@ -185,26 +158,33 @@ game_html = f"""
 
   /* --- モバイルコントローラー --- */
   #mobile-controls {{
-    display: none; position: absolute; bottom: 0; left: 0; width: 100%; height: 100%; max-height: 200px;
-    z-index: 100; pointer-events: none; justify-content: space-between; padding: 0 20px; box-sizing: border-box; align-items: flex-end; padding-bottom: 20px;
+    display: none; 
+    position: absolute; 
+    bottom: 0; left: 0; width: 100%; height: 180px;
+    z-index: 100; pointer-events: none; 
+    justify-content: space-between; 
+    padding: 10px 20px; 
+    box-sizing: border-box; 
+    align-items: center; /* 上下中央 */
   }}
 
+  /* スマホ・タブレット用表示設定 */
   @media (hover: none) and (pointer: coarse) {{
     #mobile-controls {{ display: flex; }}
     .restart-msg {{ display: none; }}
-    #mobile-retry-btn {{ display: block !important; }}
   }}
 
   .joystick-area {{
-      pointer-events: auto; width: 120px; height: 120px; margin-bottom: 20px; margin-left: 20px; position: relative;
+      pointer-events: auto; width: 120px; height: 120px; 
       background: rgba(255, 255, 255, 0.1); border: 2px solid rgba(255, 255, 255, 0.3); border-radius: 50%; touch-action: none;
+      position: relative;
   }}
   .joystick-knob {{
       width: 50px; height: 50px; background: rgba(0, 210, 255, 0.8); border-radius: 50%; position: absolute;
       top: 50%; left: 50%; transform: translate(-50%, -50%); box-shadow: 0 0 10px rgba(0, 210, 255, 0.5); pointer-events: none;
   }}
 
-  .action-btn-area {{ pointer-events: auto; margin-bottom: 40px; margin-right: 60px; }}
+  .action-btn-area {{ pointer-events: auto; }}
   .touch-btn {{
     width: 90px; height: 90px; border-radius: 50%; background: rgba(255, 255, 255, 0.2); border: 2px solid rgba(255, 255, 255, 0.6);
     color: white; font-size: 40px; display: flex; justify-content: center; align-items: center; touch-action: manipulation;
@@ -216,9 +196,10 @@ game_html = f"""
 </head>
 <body>
 
+<!-- 横画面警告（縦にしてね） -->
 <div id="orientation-warning">
     <div class="rotate-icon">📱⟲</div>
-    <div class="rotate-msg">Please Rotate Your Device<br>画面を横にしてください</div>
+    <div class="rotate-msg">Please Rotate to Portrait<br>画面を縦にしてください</div>
     <div style="margin-top:20px; color:#aaa;">Game Paused</div>
 </div>
 
@@ -228,6 +209,7 @@ game_html = f"""
     <div id="status-msg"></div>
 </div>
 
+<!-- ゲームキャンバス -->
 <canvas id="gameCanvas" width="800" height="400"></canvas>
 
 <div id="title-screen">
@@ -242,14 +224,13 @@ game_html = f"""
         <p style="color: cyan;">🎉 NEW RECORD! 🎉</p>
         <input type="text" id="player-name" placeholder="Enter Name" maxlength="8">
         <button id="submit-btn" onclick="submitScore()">Save</button>
-        <div id="loading-msg">⏳ Saving to Global Ranking...</div>
+        <div id="loading-msg">⏳ Saving...</div>
     </div>
     <div id="ranking-section">
         <div id="rank-loading" style="color:#aaa; display:none;">Loading Ranking...</div>
         <table><thead><tr><th class="rank-col">#</th><th>Name</th><th class="score-col">Score</th></tr></thead><tbody id="ranking-body"></tbody></table>
     </div>
     <div class="restart-msg">Press 'R' to Restart</div>
-    <button id="mobile-retry-btn" onclick="resetGame()">🔄 RETRY</button>
     <div id="auto-restart-msg"></div>
 </div>
 
@@ -258,7 +239,7 @@ game_html = f"""
         <div id="joystick-knob" class="joystick-knob"></div>
     </div>
     <div class="action-btn-area">
-        <div id="btn-jump" class="touch-btn" style="background: rgba(255, 200, 0, 0.4); width:100px; height:100px; font-size:50px;">▲</div>
+        <div id="btn-jump" class="touch-btn" style="background: rgba(255, 200, 0, 0.4);">▲</div>
     </div>
 </div>
 
@@ -266,28 +247,37 @@ game_html = f"""
   document.addEventListener('contextmenu', event => event.preventDefault());
   const canvas = document.getElementById('gameCanvas');
   const ctx = canvas.getContext('2d');
+  
+  // スマホ判定
   const isMobile = ('ontouchstart' in window) || (navigator.maxTouchPoints > 0) || (window.innerWidth < 800);
   let isPaused = false;
   const orientationWarning = document.getElementById('orientation-warning');
 
+  // ★修正: 画面向きチェック & Canvasサイズ設定 (縦画面最適化)
   function checkOrientationAndResize() {{
       if (isMobile) {{
-          if (window.innerHeight > window.innerWidth) {{
+          // 横長の場合 -> 警告を出してポーズ
+          if (window.innerWidth > window.innerHeight) {{
               isPaused = true;
               orientationWarning.style.display = 'flex';
-              canvas.width = window.innerWidth - 20;
-              canvas.height = 400;
           }} else {{
+              // 縦長の場合 -> ゲーム再開
               isPaused = false;
               orientationWarning.style.display = 'none';
-              canvas.width = 800;
-              canvas.height = 400;
+              
+              // ★重要: Canvas解像度は大きく(640px)確保し、CSSで縮小表示する。
+              // これにより、キャラが小さくなりすぎず、広い範囲を表示できる。
+              canvas.width = 640; 
+              canvas.height = 400; 
           }}
       }} else {{
+          // PC
           canvas.width = 800;
           canvas.height = 400;
       }}
   }}
+  
+  // 読み込み時とリサイズ時にチェック
   window.addEventListener('resize', checkOrientationAndResize);
   checkOrientationAndResize();
 
@@ -308,6 +298,7 @@ game_html = f"""
   const titleImg = document.getElementById('title-img');
   const startText = document.getElementById('start-text');
 
+  // ジョイスティック
   const joystickArea = document.getElementById('joystick-area');
   const joystickKnob = document.getElementById('joystick-knob');
   let stickTouchId = null;
@@ -346,69 +337,29 @@ game_html = f"""
   const btnJump = document.getElementById('btn-jump');
   if(btnJump) {{ btnJump.addEventListener('touchstart', (e) => {{ e.preventDefault(); doJump(); }}); }}
 
+  // ... (ゲームロジック変数) ...
   let screenShake = {{ x: 0, y: 0, duration: 0, intensity: 0 }};
   function addShake(intensity, duration) {{ screenShake.intensity = intensity; screenShake.duration = duration; }}
-  function updateShake() {{
-      if (screenShake.duration > 0) {{ screenShake.x = (Math.random() - 0.5) * screenShake.intensity; screenShake.y = (Math.random() - 0.5) * screenShake.intensity; screenShake.duration--; }} 
-      else {{ screenShake.x = 0; screenShake.y = 0; }}
-  }}
+  function updateShake() {{ if (screenShake.duration > 0) {{ screenShake.x = (Math.random() - 0.5) * screenShake.intensity; screenShake.y = (Math.random() - 0.5) * screenShake.intensity; screenShake.duration--; }} else {{ screenShake.x = 0; screenShake.y = 0; }} }}
 
   let particles = [];
-  function spawnParticles(x, y, color, count = 8) {{
-      for (let i = 0; i < count; i++) {{ particles.push({{ x: x, y: y, vx: (Math.random() - 0.5) * 8, vy: (Math.random() - 0.5) * 8, life: 30 + Math.random() * 20, size: 4 + Math.random() * 4, color: color }}); }}
-  }}
-  function updateAndDrawParticles() {{
-      for (let i = 0; i < particles.length; i++) {{
-          let p = particles[i]; p.x += p.vx; p.y += p.vy; p.vy += 0.2; p.life--; p.size *= 0.95;
-          if (p.life <= 0 || p.size < 0.5) {{ particles.splice(i, 1); i--; }}
-      }}
-  }}
+  function spawnParticles(x, y, color, count = 8) {{ for (let i = 0; i < count; i++) {{ particles.push({{ x: x, y: y, vx: (Math.random() - 0.5) * 8, vy: (Math.random() - 0.5) * 8, life: 30 + Math.random() * 20, size: 4 + Math.random() * 4, color: color }}); }} }}
+  function updateAndDrawParticles() {{ for (let i = 0; i < particles.length; i++) {{ let p = particles[i]; p.x += p.vx; p.y += p.vy; p.vy += 0.2; p.life--; p.size *= 0.95; if (p.life <= 0 || p.size < 0.5) {{ particles.splice(i, 1); i--; }} }} }}
 
   let audioCtx, isBgmPlaying = false, bgmTimeout = null, activeOscillators = [];
   const BASE_BPM = 130, BASE_BEAT_TIME = 60 / BASE_BPM;
   const melody = [5,5,6,5,3,-1,3,5, 5,5,6,5,3,-1,3,2, 5,5,6,5,8,8,7,6, 6,5,3,3,-1,5,-1,-1];
   const scaleToFreq = (num) => {{ if(num < 0) return null; const scale = [261.63,293.66,329.63,349.23,392.00,440.00,493.88,523.25]; return scale[num-1]; }};
 
-  function playNoiseForBGM(time, duration, volume){{
-      if (audioCtx.state === 'suspended') audioCtx.resume();
-      const buffer = audioCtx.createBuffer(1, audioCtx.sampleRate * duration, audioCtx.sampleRate);
-      const data = buffer.getChannelData(0); for(let i=0;i<data.length;i++) data[i] = (Math.random()*2-1);
-      const noise = audioCtx.createBufferSource(); noise.buffer = buffer;
-      const gain = audioCtx.createGain(); gain.gain.setValueAtTime(volume, time); gain.gain.exponentialRampToValueAtTime(0.01, time + duration);
-      noise.connect(gain).connect(audioCtx.destination); noise.start(time); activeOscillators.push(noise);
-  }}
-  function playNoteForBGM(freq, time, duration){{
-      if (audioCtx.state === 'suspended') audioCtx.resume();
-      const osc = audioCtx.createOscillator(); osc.type = "square"; osc.frequency.value = freq;
-      const gain = audioCtx.createGain(); gain.gain.setValueAtTime(0.15, time); gain.gain.exponentialRampToValueAtTime(0.01, time + duration);
-      osc.connect(gain).connect(audioCtx.destination); osc.start(time); osc.stop(time + duration); activeOscillators.push(osc);
-  }}
+  function playNoiseForBGM(time, duration, volume){{ if (audioCtx.state === 'suspended') audioCtx.resume(); const buffer = audioCtx.createBuffer(1, audioCtx.sampleRate * duration, audioCtx.sampleRate); const data = buffer.getChannelData(0); for(let i=0;i<data.length;i++) data[i] = (Math.random()*2-1); const noise = audioCtx.createBufferSource(); noise.buffer = buffer; const gain = audioCtx.createGain(); gain.gain.setValueAtTime(volume, time); gain.gain.exponentialRampToValueAtTime(0.01, time + duration); noise.connect(gain).connect(audioCtx.destination); noise.start(time); activeOscillators.push(noise); }}
+  function playNoteForBGM(freq, time, duration){{ if (audioCtx.state === 'suspended') audioCtx.resume(); const osc = audioCtx.createOscillator(); osc.type = "square"; osc.frequency.value = freq; const gain = audioCtx.createGain(); gain.gain.setValueAtTime(0.15, time); gain.gain.exponentialRampToValueAtTime(0.01, time + duration); osc.connect(gain).connect(audioCtx.destination); osc.start(time); osc.stop(time + duration); activeOscillators.push(osc); }}
   function getCurrentBeatTime() {{ let multiplier = 1.0 + Math.min(score, 10000) / 10000 * 3.0; return BASE_BEAT_TIME / multiplier; }}
-  function playBGMLoop(){{
-      if (!isBgmPlaying) return; 
-      const start = audioCtx.currentTime; const currentBeat = getCurrentBeatTime(); 
-      melody.forEach((note,i)=>{{ const t = start + i * currentBeat; if(note > 0) playNoteForBGM(scaleToFreq(note), t, currentBeat); else playNoiseForBGM(t, 0.03, 0.1); }});
-      bgmTimeout = setTimeout(playBGMLoop, melody.length * currentBeat * 1000);
-  }}
+  function playBGMLoop(){{ if (!isBgmPlaying) return; const start = audioCtx.currentTime; const currentBeat = getCurrentBeatTime(); melody.forEach((note,i)=>{{ const t = start + i * currentBeat; if(note > 0) playNoteForBGM(scaleToFreq(note), t, currentBeat); else playNoiseForBGM(t, 0.03, 0.1); }}); bgmTimeout = setTimeout(playBGMLoop, melody.length * currentBeat * 1000); }}
   function startBGM() {{ if (isBgmPlaying) return; isBgmPlaying = true; if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)(); if (audioCtx.state === 'suspended') audioCtx.resume(); playBGMLoop(); }}
   function stopBGM() {{ isBgmPlaying = false; if (bgmTimeout) clearTimeout(bgmTimeout); activeOscillators.forEach(node => {{ try {{ node.stop(); }} catch(e) {{}} }}); activeOscillators = []; }}
-  function playGameOverSound() {{
-      if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)(); if (audioCtx.state === 'suspended') audioCtx.resume();
-      const osc = audioCtx.createOscillator(); const gain = audioCtx.createGain(); osc.type = 'sawtooth'; osc.connect(gain); gain.connect(audioCtx.destination);
-      const now = audioCtx.currentTime; osc.frequency.setValueAtTime(800, now); osc.frequency.exponentialRampToValueAtTime(50, now + 0.8); gain.gain.setValueAtTime(0.3, now); gain.gain.exponentialRampToValueAtTime(0.01, now + 0.8); osc.start(now); osc.stop(now + 0.8);
-  }}
+  function playGameOverSound() {{ if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)(); if (audioCtx.state === 'suspended') audioCtx.resume(); const osc = audioCtx.createOscillator(); const gain = audioCtx.createGain(); osc.type = 'sawtooth'; osc.connect(gain); gain.connect(audioCtx.destination); const now = audioCtx.currentTime; osc.frequency.setValueAtTime(800, now); osc.frequency.exponentialRampToValueAtTime(50, now + 0.8); gain.gain.setValueAtTime(0.3, now); gain.gain.exponentialRampToValueAtTime(0.01, now + 0.8); osc.start(now); osc.stop(now + 0.8); }}
 
-  function loadResized(src, w, h) {{
-      const wrapper = {{ img: null, ready: false, error: false }};
-      const img = new Image(); img.crossOrigin = "Anonymous"; img.src = src;
-      img.onload = () => {{
-          const offCanvas = document.createElement('canvas'); offCanvas.width = w; offCanvas.height = h;
-          const offCtx = offCanvas.getContext('2d'); offCtx.drawImage(img, 0, 0, w, h);
-          wrapper.img = offCanvas; wrapper.ready = true;
-      }};
-      img.onerror = () => {{ wrapper.error = true; }};
-      return wrapper;
-  }}
+  function loadResized(src, w, h) {{ const wrapper = {{ img: null, ready: false, error: false }}; const img = new Image(); img.crossOrigin = "Anonymous"; img.src = src; img.onload = () => {{ const offCanvas = document.createElement('canvas'); offCanvas.width = w; offCanvas.height = h; const offCtx = offCanvas.getContext('2d'); offCtx.drawImage(img, 0, 0, w, h); wrapper.img = offCanvas; wrapper.ready = true; }}; img.onerror = () => {{ wrapper.error = true; }}; return wrapper; }}
 
   const P_W = 60, P_H = 60; 
   const playerAnim = {{ idle: [], run: [], jump: [], dead: null, squat: null }};
@@ -421,18 +372,14 @@ game_html = f"""
   const enemyAnim = [], enemy2Anim = [];
   for(let i=1; i<=2; i++) {{ enemyAnim.push(loadResized(`https://raw.githubusercontent.com/m-fukuda-blip/game/main/EnemyAction0${{i}}.png`, 52, 52)); }}
   for(let i=1; i<=2; i++) {{ enemy2Anim.push(loadResized(`https://raw.githubusercontent.com/m-fukuda-blip/game/main/Enemy2Action0${{i}}.png`, 52, 52)); }}
-  
   const itemImgWrapper = loadResized("https://raw.githubusercontent.com/m-fukuda-blip/game/main/coin.png", 45, 45);
   const capsuleImgWrapper = loadResized("https://raw.githubusercontent.com/m-fukuda-blip/game/main/capsule.png", 45, 45);
   const mutekiImgWrapper = loadResized("https://raw.githubusercontent.com/m-fukuda-blip/game/main/muteki.png", 45, 45);
   const jyamaImgWrapper = loadResized("https://raw.githubusercontent.com/m-fukuda-blip/game/main/jyama.png", 45, 45);
-  
   const itemEffectAnim = [];
   for(let i=1; i<=3; i++) itemEffectAnim.push(loadResized(`https://raw.githubusercontent.com/m-fukuda-blip/game/main/ItemAction0${{i}}.png`, 45, 45));
-
   const cloudImgWrappers = [];
   for(let i=1; i<=4; i++) cloudImgWrappers.push(loadResized(`https://raw.githubusercontent.com/m-fukuda-blip/game/main/cloud${{i}}.png`, 170, 120)); 
-
   const mountainImgWrapper = loadResized("https://raw.githubusercontent.com/m-fukuda-blip/game/main/mountains.png", 3000, 200);
   const buildingImgWrapper = loadResized("https://raw.githubusercontent.com/m-fukuda-blip/game/main/buildings.png", 3000, 200);
 
@@ -457,32 +404,19 @@ game_html = f"""
   const API_URL = "{GAS_API_URL}";
   let globalRankings = [];
 
-  async function fetchRankings() {{
-    try {{ const response = await fetch(API_URL); return await response.json(); }} catch (e) {{ console.error(e); return []; }}
-  }}
-  async function sendScore(name, score) {{
-    try {{ await fetch(API_URL, {{ method: 'POST', body: JSON.stringify({{ name: name, score: score }}) }}); }} catch (e) {{ console.error(e); }}
-  }}
+  async function fetchRankings() {{ try {{ const response = await fetch(API_URL); return await response.json(); }} catch (e) {{ return []; }} }}
+  async function sendScore(name, score) {{ try {{ await fetch(API_URL, {{ method: 'POST', body: JSON.stringify({{ name: name, score: score }}) }}); }} catch (e) {{}} }}
   fetchRankings().then(data => {{ globalRankings = data; }});
-
-  function checkRankIn(currentScore) {{
-    if (globalRankings.length < 10) return true;
-    return currentScore > globalRankings[globalRankings.length - 1].score;
-  }}
+  function checkRankIn(currentScore) {{ if (globalRankings.length < 10) return true; return currentScore > globalRankings[globalRankings.length - 1].score; }}
   function startAutoRestartCountdown() {{
       let count = 5; autoRestartMsg.style.display = 'block'; autoRestartMsg.innerText = `Restarting in ${{count}}...`;
       if (autoRestartTimer) clearInterval(autoRestartTimer);
-      autoRestartTimer = setInterval(() => {{
-          count--; if (count > 0) autoRestartMsg.innerText = `Restarting in ${{count}}...`;
-          else {{ clearInterval(autoRestartTimer); resetGame(); }}
-      }}, 1000);
+      autoRestartTimer = setInterval(() => {{ count--; if (count > 0) autoRestartMsg.innerText = `Restarting in ${{count}}...`; else {{ clearInterval(autoRestartTimer); resetGame(); }} }}, 1000);
   }}
   async function submitScore() {{
-    const name = nameInput.value.trim() || "NO NAME";
-    nameInput.disabled = true; submitBtn.disabled = true; loadingMsg.style.display = 'block';
+    const name = nameInput.value.trim() || "NO NAME"; nameInput.disabled = true; submitBtn.disabled = true; loadingMsg.style.display = 'block';
     await sendScore(name, score); globalRankings = await fetchRankings();
-    loadingMsg.style.display = 'none'; nameInput.disabled = false; submitBtn.disabled = false;
-    inputSection.style.display = 'none'; showRankingTable(globalRankings);
+    loadingMsg.style.display = 'none'; nameInput.disabled = false; submitBtn.disabled = false; inputSection.style.display = 'none'; showRankingTable(globalRankings);
     if (isMobile) startAutoRestartCountdown();
   }}
   function showRankingTable(rankings) {{
@@ -538,7 +472,9 @@ game_html = f"""
       for (let i = 0; i < terrainSegments.length; i++) {{ if (terrainSegments[i].x + terrainSegments[i].width < deleteThreshold) {{ terrainSegments.splice(i, 1); i--; }} }}
       for (let i = 0; i < platforms.length; i++) {{ if (platforms[i].x + platforms[i].width < deleteThreshold) {{ platforms.splice(i, 1); i--; }} }}
       for (let i = 0; i < checkpoints.length; i++) {{ if (checkpoints[i].x + 100 < deleteThreshold) {{ checkpoints.splice(i, 1); i--; }} }}
-      const generateThreshold = cameraX + canvas.width + 400;
+      
+      // ★修正: 先読み生成距離を広げる
+      const generateThreshold = cameraX + canvas.width + 800; 
       while (lastGeneratedX < generateThreshold) {{ generateNextSegment(); }}
       if (lastGeneratedX > nextCheckpointDist) {{ checkpoints.push({{ x: nextCheckpointDist, passed: false }}); nextCheckpointDist += 800 * 10; }}
   }}
@@ -563,10 +499,7 @@ game_html = f"""
           platforms.push({{ x: pX, y: pY, width: pW, height: 20 }});
           if (Math.random() < 0.5) spawnEnemyOnTerrain(pX, pW, pY);
       }}
-      if (gapWidth === 0 && width > 100) {{ 
-           if (Math.random() < 1.0) spawnEnemyOnTerrain(newX, width, topY); 
-           if (Math.random() < 0.8) spawnItemOnTerrain(newX, width, topY); 
-      }}
+      if (gapWidth === 0 && width > 100) {{ if (Math.random() < 1.0) spawnEnemyOnTerrain(newX, width, topY); if (Math.random() < 0.8) spawnItemOnTerrain(newX, width, topY); }}
   }}
   
   function spawnEnemyOnTerrain(tx, tw, ty) {{
@@ -657,13 +590,16 @@ game_html = f"""
         let nextX = player.x + player.dx; let checkX = player.dx > 0 ? nextX + player.width : nextX;
         let nextGroundY = getGroundYAtX(checkX); 
         if (nextGroundY !== null) {{ if (player.y + player.height > nextGroundY + 5) player.dx = 0; }}
+        // ★修正: カメラ位置での左端制限
         if (nextX < cameraX) {{ nextX = cameraX; player.dx = 0; }}
     }}
 
     player.x += player.dx; player.y += player.dy; player.dy += GRAVITY;
-    let targetCameraX = player.x - 300; 
+    
+    // ★修正: カメラ追従計算 (プレイヤー中心に)
+    let targetCameraX = player.x - canvas.width / 2 + player.width / 2;
     if (targetCameraX < 0) targetCameraX = 0;
-    if (targetCameraX > cameraX) cameraX = targetCameraX; 
+    if (targetCameraX > cameraX) cameraX = targetCameraX;
     
     updateTerrain();
     const groundY = getGroundYUnderPlayer();
