@@ -63,58 +63,30 @@ game_html = f"""
     touch-action: none;
   }}
   
-  /* Canvas設定 */
-  canvas {{ 
-      background-color: #87CEEB; 
-      border: 4px solid #fff; 
-      box-shadow: 0 0 20px rgba(0,0,0,0.5);
-      /* デフォルトではサイズ指定なし（JS制御） */
-  }}
+  canvas {{ background-color: #87CEEB; border: 4px solid #fff; box-shadow: 0 0 20px rgba(0,0,0,0.5); }}
   
   /* スマホ横持ち時のCanvas最適化 */
   @media (max-height: 500px) and (orientation: landscape) {{
       canvas {{
-          height: 100vh;       /* 画面の高さいっぱいに */
-          width: auto;         /* アスペクト比維持 */
-          max-width: 100vw;    /* 画面幅を超えない */
-          object-fit: contain; /* 全体が収まるように */
-          border: none;        /* 枠線を消してスッキリさせる */
+          height: 100vh; width: auto; max-width: 100vw; object-fit: contain; border: none;
       }}
   }}
 
-  /* --- UIレイヤー --- */
-  #ui-layer {{ 
-      position: absolute; 
-      top: 20px; left: 20px; 
-      font-size: 24px; font-weight: bold; 
-      color: black; 
-      pointer-events: none; 
-      text-shadow: 1px 1px 0 #fff; 
-      z-index: 5; 
-  }}
-
+  #ui-layer {{ position: absolute; top: 20px; left: 20px; font-size: 24px; font-weight: bold; color: black; pointer-events: none; text-shadow: 1px 1px 0 #fff; z-index: 5; }}
+  
   /* スマホ横持ち時のUI配置調整 */
   @media (max-height: 500px) and (orientation: landscape) {{
-      #ui-layer {{
-          top: 220px; 
-          left: 20px; 
-          transform: scale(0.7); 
-          transform-origin: top left;
-          width: 100%;
-      }}
+      #ui-layer {{ top: 220px; left: 20px; transform: scale(0.7); transform-origin: top left; width: 100%; }}
   }}
 
   #hearts {{ color: red; font-size: 30px; }}
   #status-msg {{ font-size: 20px; margin-top: 5px; }}
 
-  /* --- タイトル画面 --- */
   #title-screen {{
     position: absolute; top: 0; left: 0; width: 100%; height: 100%;
     display: flex; flex-direction: column; justify-content: center; align-items: center;
-    background: rgba(0,0,0,0.4); z-index: 10;
-    pointer-events: none;
+    background: rgba(0,0,0,0.4); z-index: 10; pointer-events: none;
   }}
-  
   .title-img {{ max-width: 22%; height: auto; margin-bottom: 20px; opacity: 0; }}
   @media (max-width: 800px) {{ .title-img {{ max-width: 60%; }} }}
   .start-text {{ font-size: 40px; color: white; text-shadow: 2px 2px #000; font-weight: bold; opacity: 0; }}
@@ -123,31 +95,17 @@ game_html = f"""
   @keyframes blinkFade {{ 0% {{ opacity: 0; }} 100% {{ opacity: 1; }} }}
   @keyframes blinkRed {{ 0% {{ color: red; }} 50% {{ color: white; }} 100% {{ color: red; }} }}
 
-  /* --- ゲームオーバー・ランキング画面 --- */
   #overlay {{ 
     position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); 
     background: rgba(0, 0, 0, 0.85); border: 4px solid white; border-radius: 10px;
     padding: 30px; text-align: center; color: white; display: none; width: 400px; 
-    max-width: 90%; 
-    z-index: 200; 
+    max-width: 90%; z-index: 200; 
   }}
-
   @media (max-height: 500px) {{
-      #overlay {{
-          padding: 10px;
-          transform: translate(-50%, -50%) scale(0.7); 
-          width: 500px; 
-      }}
-      #final-score-display {{ margin-bottom: 5px; font-size: 20px; }}
-      h2 {{ margin: 5px 0; font-size: 24px; }}
-      table {{ margin: 5px 0; font-size: 14px; }}
-      th, td {{ padding: 2px; }}
-      #input-section {{ margin-bottom: 10px; }}
-      #mobile-retry-btn {{ margin: 10px auto 5px auto; padding: 8px 20px; font-size: 18px; }}
+      #overlay {{ padding: 10px; transform: translate(-50%, -50%) scale(0.7); width: 500px; }}
   }}
 
   h2 {{ margin-top: 0; color: yellow; text-shadow: 2px 2px #f00; }}
-  
   table {{ width: 100%; border-collapse: collapse; margin: 15px 0; }}
   th, td {{ border-bottom: 1px solid #555; padding: 5px; text-align: left; }}
   th {{ color: #aaa; }}
@@ -157,7 +115,6 @@ game_html = f"""
   #input-section {{ margin-bottom: 20px; display: none; }}
   input[type="text"] {{ padding: 5px; font-size: 16px; width: 150px; text-align: center; user-select: text; -webkit-user-select: text; }}
   button {{ padding: 5px 15px; font-size: 16px; cursor: pointer; background: #f00; color: white; border: none; font-weight: bold; }}
-  
   #loading-msg {{ display: none; color: yellow; font-weight: bold; margin-top: 10px; animation: blink 1s infinite; }}
   .restart-msg {{ margin-top: 20px; font-size: 14px; color: #ccc; }}
 
@@ -167,12 +124,8 @@ game_html = f"""
       border-radius: 50px; cursor: pointer; animation: blink 2s infinite;
       box-shadow: 0 0 10px rgba(0, 210, 255, 0.8);
   }}
-  
-  #auto-restart-msg {{
-      display: none; color: #00d2ff; margin-top: 20px; font-size: 18px; font-weight: bold; animation: blink 1s infinite;
-  }}
+  #auto-restart-msg {{ display: none; color: #00d2ff; margin-top: 20px; font-size: 18px; font-weight: bold; animation: blink 1s infinite; }}
 
-  /* --- 縦画面警告 --- */
   #orientation-warning {{
       display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%;
       background: rgba(0,0,0,0.95); z-index: 9999;
@@ -182,12 +135,10 @@ game_html = f"""
   .rotate-icon {{ font-size: 60px; margin-bottom: 20px; }}
   .rotate-msg {{ font-size: 24px; font-weight: bold; animation: blinkRed 1s infinite; padding: 20px; }}
 
-  /* --- モバイルコントローラー --- */
   #mobile-controls {{
     display: none; position: absolute; bottom: 0; left: 0; width: 100%; height: 100%; max-height: 200px;
     z-index: 100; pointer-events: none; justify-content: space-between; padding: 0 20px; box-sizing: border-box; align-items: flex-end; padding-bottom: 20px;
   }}
-
   @media (hover: none) and (pointer: coarse) {{
     #mobile-controls {{ display: flex; }}
     .restart-msg {{ display: none; }}
@@ -202,7 +153,6 @@ game_html = f"""
       width: 50px; height: 50px; background: rgba(0, 210, 255, 0.8); border-radius: 50%; position: absolute;
       top: 50%; left: 50%; transform: translate(-50%, -50%); box-shadow: 0 0 10px rgba(0, 210, 255, 0.5); pointer-events: none;
   }}
-
   .action-btn-area {{ pointer-events: auto; margin-bottom: 40px; margin-right: 60px; }}
   .touch-btn {{
     width: 90px; height: 90px; border-radius: 50%; background: rgba(255, 255, 255, 0.2); border: 2px solid rgba(255, 255, 255, 0.6);
@@ -210,7 +160,6 @@ game_html = f"""
     user-select: none; -webkit-user-select: none; cursor: pointer; text-shadow: 1px 1px 2px black;
   }}
   .touch-btn:active {{ background: rgba(255, 255, 255, 0.5); }}
-
 </style>
 </head>
 <body>
@@ -241,7 +190,7 @@ game_html = f"""
         <p style="color: cyan;">🎉 NEW RECORD! 🎉</p>
         <input type="text" id="player-name" placeholder="Enter Name" maxlength="8">
         <button id="submit-btn" onclick="submitScore()">Save</button>
-        <div id="loading-msg">⏳ Saving to Global Ranking...</div>
+        <div id="loading-msg">⏳ Saving...</div>
     </div>
     <div id="ranking-section">
         <div id="rank-loading" style="color:#aaa; display:none;">Loading Ranking...</div>
@@ -307,52 +256,53 @@ game_html = f"""
   const titleImg = document.getElementById('title-img');
   const startText = document.getElementById('start-text');
 
-  const joystickArea = document.getElementById('joystick-area');
-  const joystickKnob = document.getElementById('joystick-knob');
-  let stickTouchId = null;
-
-  if (joystickArea) {{
-      const maxRadius = 40; const center = {{ x: 60, y: 60 }}; 
-      joystickArea.addEventListener('touchstart', (e) => {{
-          e.preventDefault(); const touch = e.changedTouches[0]; stickTouchId = touch.identifier; startBGM(); updateStick(touch);
-      }}, {{passive: false}});
-      joystickArea.addEventListener('touchmove', (e) => {{
-          e.preventDefault();
-          for (let i = 0; i < e.changedTouches.length; i++) {{ if (e.changedTouches[i].identifier === stickTouchId) {{ updateStick(e.changedTouches[i]); break; }} }}
-      }}, {{passive: false}});
-      const endStick = (e) => {{
-          e.preventDefault();
-          for (let i = 0; i < e.changedTouches.length; i++) {{
-              if (e.changedTouches[i].identifier === stickTouchId) {{
-                  stickTouchId = null; joystickKnob.style.transform = `translate(-50%, -50%) translate(0px, 0px)`;
-                  keys.left = false; keys.right = false; keys.down = false; break;
-              }}
-          }}
-      }};
-      joystickArea.addEventListener('touchend', endStick); joystickArea.addEventListener('touchcancel', endStick);
-
-      function updateStick(touch) {{
-          const rect = joystickArea.getBoundingClientRect();
-          let x = touch.clientX - rect.left - center.x; let y = touch.clientY - rect.top - center.y;
-          const distance = Math.sqrt(x*x + y*y);
-          if (distance > maxRadius) {{ const angle = Math.atan2(y, x); x = Math.cos(angle) * maxRadius; y = Math.sin(angle) * maxRadius; }}
-          joystickKnob.style.transform = `translate(-50%, -50%) translate(${{x}}px, ${{y}}px)`;
-          keys.left = false; keys.right = false; keys.down = false;
-          if (distance > 10) {{ if (Math.abs(x) > Math.abs(y)) {{ if (x > 0) keys.right = true; else keys.left = true; }} else {{ if (y > 0) keys.down = true; }} }}
-      }}
-  }}
+  // --- 変数定義（上部にまとめる） ---
+  const GRAVITY = 0.6, FRICTION = 0.8, BASE_GROUND_Y = 360;
+  const BASE_BPM = 130, BASE_BEAT_TIME = 60 / BASE_BPM;
   
-  const btnJump = document.getElementById('btn-jump');
-  if(btnJump) {{ btnJump.addEventListener('touchstart', (e) => {{ e.preventDefault(); doJump(); }}); }}
-
+  let score = 0, level = 1, gameSpeed = 1.0, hp = 3, gameOver = false, isTitle = true; 
+  let frameCount = 0, nextEnemySpawn = 0, nextItemSpawn = 0;
+  let facingRight = true, isInvincible = false, invincibleTimer = 0, terrainSegments = [];
+  let superMode = false, superModeTimer = 0, slowMode = false, slowModeTimer = 0;
+  let floatingTexts = [], autoRestartTimer = null;
+  let cameraX = 0, lastGeneratedX = 0;
+  let platforms = [], checkpoints = [], nextCheckpointDist = 800 * 10; 
+  
+  let nextReverseEnemySpawn = 0;
+  let speedUpShown = false;
+  let crownMode = false;
+  let crownModeTimer = 0;
+  
+  let audioCtx, isBgmPlaying = false, bgmTimeout = null, activeOscillators = [];
+  const melody = [5,5,6,5,3,-1,3,5, 5,5,6,5,3,-1,3,2, 5,5,6,5,8,8,7,6, 6,5,3,3,-1,5,-1,-1];
+  
+  let enemies = [], items = [], clouds = [];
+  const keys = {{ right: false, left: false, up: false, down: false }}; 
+  
+  let particles = [];
   let screenShake = {{ x: 0, y: 0, duration: 0, intensity: 0 }};
+
+  const player = {{ 
+      x: 200, y: 0, width: 60, height: 60, speed: 7, dx: 0, dy: 0, 
+      jumping: false, jumpCount: 0, maxJump: 2,
+      state: 'idle', animIndex: 0, animTimer: 0, animSpeedIdle: 15, animSpeedRun: 8, idlePingPong: 1, combo: 0 
+  }};
+
+  // --- 共通関数 ---
+
+  function getSpeedMultiplier() {{
+      if (score < 10000) {{ return 1.0 + (score / 10000) * 1.0; }}
+      let base = 2.0; let extra = ((score - 10000) / 1000) * 0.02; return Math.min(4.0, base + extra);
+  }}
+  function getCurrentBeatTime() {{ return BASE_BEAT_TIME / getSpeedMultiplier(); }}
+  const scaleToFreq = (num) => {{ if(num < 0) return null; const scale = [261.63,293.66,329.63,349.23,392.00,440.00,493.88,523.25]; return scale[num-1]; }};
+  
   function addShake(intensity, duration) {{ screenShake.intensity = intensity; screenShake.duration = duration; }}
   function updateShake() {{
       if (screenShake.duration > 0) {{ screenShake.x = (Math.random() - 0.5) * screenShake.intensity; screenShake.y = (Math.random() - 0.5) * screenShake.intensity; screenShake.duration--; }} 
       else {{ screenShake.x = 0; screenShake.y = 0; }}
   }}
 
-  let particles = [];
   function spawnParticles(x, y, color, count = 8) {{
       for (let i = 0; i < count; i++) {{ particles.push({{ x: x, y: y, vx: (Math.random() - 0.5) * 8, vy: (Math.random() - 0.5) * 8, life: 30 + Math.random() * 20, size: 4 + Math.random() * 4, color: color }}); }}
   }}
@@ -362,11 +312,7 @@ game_html = f"""
           if (p.life <= 0 || p.size < 0.5) {{ particles.splice(i, 1); i--; }}
       }}
   }}
-
-  let audioCtx, isBgmPlaying = false, bgmTimeout = null, activeOscillators = [];
-  const melody = [5,5,6,5,3,-1,3,5, 5,5,6,5,3,-1,3,2, 5,5,6,5,8,8,7,6, 6,5,3,3,-1,5,-1,-1];
-  const scaleToFreq = (num) => {{ if(num < 0) return null; const scale = [261.63,293.66,329.63,349.23,392.00,440.00,493.88,523.25]; return scale[num-1]; }};
-
+  
   function playNoiseForBGM(time, duration, volume){{
       if (audioCtx.state === 'suspended') audioCtx.resume();
       const buffer = audioCtx.createBuffer(1, audioCtx.sampleRate * duration, audioCtx.sampleRate);
@@ -381,12 +327,32 @@ game_html = f"""
       const gain = audioCtx.createGain(); gain.gain.setValueAtTime(0.15, time); gain.gain.exponentialRampToValueAtTime(0.01, time + duration);
       osc.connect(gain).connect(audioCtx.destination); osc.start(time); osc.stop(time + duration); activeOscillators.push(osc);
   }}
+  function playBGMLoop(){{
+      if (!isBgmPlaying) return; 
+      const start = audioCtx.currentTime; const currentBeat = getCurrentBeatTime(); 
+      melody.forEach((note,i)=>{{ const t = start + i * currentBeat; if(note > 0) playNoteForBGM(scaleToFreq(note), t, currentBeat); else playNoiseForBGM(t, 0.03, 0.1); }});
+      bgmTimeout = setTimeout(playBGMLoop, melody.length * currentBeat * 1000);
+  }}
+  function startBGM() {{ if (isBgmPlaying) return; isBgmPlaying = true; if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)(); if (audioCtx.state === 'suspended') audioCtx.resume(); playBGMLoop(); }}
+  function stopBGM() {{ isBgmPlaying = false; if (bgmTimeout) clearTimeout(bgmTimeout); activeOscillators.forEach(node => {{ try {{ node.stop(); }} catch(e) {{}} }}); activeOscillators = []; }}
   function playGameOverSound() {{
       if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)(); if (audioCtx.state === 'suspended') audioCtx.resume();
       const osc = audioCtx.createOscillator(); const gain = audioCtx.createGain(); osc.type = 'sawtooth'; osc.connect(gain); gain.connect(audioCtx.destination);
       const now = audioCtx.currentTime; osc.frequency.setValueAtTime(800, now); osc.frequency.exponentialRampToValueAtTime(50, now + 0.8); gain.gain.setValueAtTime(0.3, now); gain.gain.exponentialRampToValueAtTime(0.01, now + 0.8); osc.start(now); osc.stop(now + 0.8);
   }}
+  function playSound(type) {{
+    if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)(); if (audioCtx.state === 'suspended') audioCtx.resume();
+    const osc = audioCtx.createOscillator(); const gain = audioCtx.createGain(); osc.connect(gain); gain.connect(audioCtx.destination); const now = audioCtx.currentTime;
+    if (type === 'jump') {{ osc.type = 'square'; osc.frequency.setValueAtTime(150, now); osc.frequency.linearRampToValueAtTime(300, now + 0.1); gain.gain.setValueAtTime(0.1, now); gain.gain.exponentialRampToValueAtTime(0.01, now + 0.1); osc.start(now); osc.stop(now + 0.1); }} 
+    else if (type === 'coin') {{ osc.type = 'sine'; osc.frequency.setValueAtTime(1200, now); osc.frequency.setValueAtTime(1600, now + 0.05); gain.gain.setValueAtTime(0.1, now); gain.gain.exponentialRampToValueAtTime(0.01, now + 0.2); osc.start(now); osc.stop(now + 0.2); }} 
+    else if (type === 'hit') {{ osc.type = 'sawtooth'; osc.frequency.setValueAtTime(100, now); osc.frequency.linearRampToValueAtTime(50, now + 0.3); gain.gain.setValueAtTime(0.2, now); gain.gain.exponentialRampToValueAtTime(0.01, now + 0.3); osc.start(now); osc.stop(now + 0.3); }} 
+    else if (type === 'heal') {{ osc.type = 'sine'; osc.frequency.setValueAtTime(400, now); osc.frequency.linearRampToValueAtTime(800, now + 0.2); gain.gain.setValueAtTime(0.1, now); gain.gain.linearRampToValueAtTime(0, now + 0.3); osc.start(now); osc.stop(now + 0.3); }} 
+    else if (type === 'powerup') {{ osc.type = 'square'; osc.frequency.setValueAtTime(440, now); osc.frequency.setValueAtTime(880, now + 0.1); gain.gain.setValueAtTime(0.1, now); gain.gain.linearRampToValueAtTime(0, now + 0.5); osc.start(now); osc.stop(now + 0.5); }} 
+    else if (type === 'bad') {{ osc.type = 'sawtooth'; osc.frequency.setValueAtTime(300, now); osc.frequency.linearRampToValueAtTime(150, now + 0.3); gain.gain.setValueAtTime(0.1, now); gain.gain.linearRampToValueAtTime(0, now + 0.3); osc.start(now); osc.stop(now + 0.3); }}
+    else if (type === 'gate') {{ osc.type = 'sine'; osc.frequency.setValueAtTime(800, now); osc.frequency.linearRampToValueAtTime(1200, now + 0.3); gain.gain.setValueAtTime(0.2, now); gain.gain.linearRampToValueAtTime(0, now + 0.4); osc.start(now); osc.stop(now + 0.4); }}
+  }}
 
+  // --- 画像読み込み ---
   function loadResized(src, w, h) {{
       const wrapper = {{ img: null, ready: false, error: false }};
       const img = new Image(); img.crossOrigin = "Anonymous"; img.src = src;
@@ -407,11 +373,9 @@ game_html = f"""
   playerAnim.dead = loadResized("https://raw.githubusercontent.com/m-fukuda-blip/game/main/Dead.png", P_W, P_H);
   playerAnim.squat = loadResized("https://raw.githubusercontent.com/m-fukuda-blip/game/main/squat.png", P_W, P_H);
 
-  const enemyAnim = [], enemy2Anim = [];
+  const enemyAnim = [], enemy2Anim = [], enemy3Anim = [];
   for(let i=1; i<=2; i++) {{ enemyAnim.push(loadResized(`https://raw.githubusercontent.com/m-fukuda-blip/game/main/EnemyAction0${{i}}.png`, 52, 52)); }}
   for(let i=1; i<=2; i++) {{ enemy2Anim.push(loadResized(`https://raw.githubusercontent.com/m-fukuda-blip/game/main/Enemy2Action0${{i}}.png`, 52, 52)); }}
-  
-  const enemy3Anim = [];
   for(let i=1; i<=2; i++) {{ enemy3Anim.push(loadResized(`https://raw.githubusercontent.com/m-fukuda-blip/game/main/enemy3action${{i}}.png`, 52, 52)); }}
 
   const itemImgWrapper = loadResized("https://raw.githubusercontent.com/m-fukuda-blip/game/main/coin.png", 45, 45);
@@ -419,172 +383,14 @@ game_html = f"""
   const mutekiImgWrapper = loadResized("https://raw.githubusercontent.com/m-fukuda-blip/game/main/muteki.png", 45, 45);
   const jyamaImgWrapper = loadResized("https://raw.githubusercontent.com/m-fukuda-blip/game/main/jyama.png", 45, 45);
   const crownImgWrapper = loadResized("https://raw.githubusercontent.com/m-fukuda-blip/game/main/crown.png", 45, 45);
-  
   const itemEffectAnim = [];
   for(let i=1; i<=3; i++) itemEffectAnim.push(loadResized(`https://raw.githubusercontent.com/m-fukuda-blip/game/main/ItemAction0${{i}}.png`, 45, 45));
-
   const cloudImgWrappers = [];
   for(let i=1; i<=4; i++) cloudImgWrappers.push(loadResized(`https://raw.githubusercontent.com/m-fukuda-blip/game/main/cloud${{i}}.png`, 170, 120)); 
-
   const mountainImgWrapper = loadResized("https://raw.githubusercontent.com/m-fukuda-blip/game/main/mountains.png", 3000, 200);
   const buildingImgWrapper = loadResized("https://raw.githubusercontent.com/m-fukuda-blip/game/main/buildings.png", 3000, 200);
 
-  const GRAVITY = 0.6, FRICTION = 0.8, BASE_GROUND_Y = 360;  
-  let score = 0, level = 1, gameSpeed = 1.0, hp = 3, gameOver = false, isTitle = true; 
-  let frameCount = 0, nextEnemySpawn = 0, nextItemSpawn = 0;
-  let facingRight = true, isInvincible = false, invincibleTimer = 0, terrainSegments = [];
-  let superMode = false, superModeTimer = 0, slowMode = false, slowModeTimer = 0;
-  let floatingTexts = [], autoRestartTimer = null;
-  let cameraX = 0, lastGeneratedX = 0;
-  let platforms = [], checkpoints = [], nextCheckpointDist = 800 * 10; 
-  
-  let nextReverseEnemySpawn = 0;
-  let speedUpShown = false;
-  let crownMode = false;
-  let crownModeTimer = 0;
-
-  const BASE_BPM = 130, BASE_BEAT_TIME = 60 / BASE_BPM;
-
-  function getSpeedMultiplier() {{
-      if (score < 10000) {{ return 1.0 + (score / 10000) * 1.0; }}
-      let base = 2.0; let extra = ((score - 10000) / 1000) * 0.02; return Math.min(4.0, base + extra);
-  }}
-
-  function getCurrentBeatTime() {{ return BASE_BEAT_TIME / getSpeedMultiplier(); }}
-
-  function playBGMLoop(){{
-      if (!isBgmPlaying) return; 
-      const start = audioCtx.currentTime; const currentBeat = getCurrentBeatTime(); 
-      melody.forEach((note,i)=>{{ const t = start + i * currentBeat; if(note > 0) playNoteForBGM(scaleToFreq(note), t, currentBeat); else playNoiseForBGM(t, 0.03, 0.1); }});
-      bgmTimeout = setTimeout(playBGMLoop, melody.length * currentBeat * 1000);
-  }}
-  function startBGM() {{ if (isBgmPlaying) return; isBgmPlaying = true; if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)(); if (audioCtx.state === 'suspended') audioCtx.resume(); playBGMLoop(); }}
-  function stopBGM() {{ isBgmPlaying = false; if (bgmTimeout) clearTimeout(bgmTimeout); activeOscillators.forEach(node => {{ try {{ node.stop(); }} catch(e) {{}} }}); activeOscillators = []; }}
-
-  const player = {{ 
-      x: 200, y: 0, width: 60, height: 60, speed: 7, dx: 0, dy: 0, 
-      jumping: false, jumpCount: 0, maxJump: 2,
-      state: 'idle', animIndex: 0, animTimer: 0, animSpeedIdle: 15, animSpeedRun: 8, idlePingPong: 1, combo: 0 
-  }};
-  
-  let enemies = [], items = [], clouds = [];
-  const keys = {{ right: false, left: false, up: false, down: false }}; 
-
-  const API_URL = "{GAS_API_URL}";
-  let globalRankings = [];
-
-  async function fetchRankings() {{
-    try {{ const response = await fetch(API_URL); return await response.json(); }} catch (e) {{ console.error(e); return []; }}
-  }}
-  async function sendScore(name, score) {{
-    try {{ await fetch(API_URL, {{ method: 'POST', body: JSON.stringify({{ name: name, score: score }}) }}); }} catch (e) {{ console.error(e); }}
-  }}
-  fetchRankings().then(data => {{ globalRankings = data; }});
-
-  function checkRankIn(currentScore) {{
-    if (globalRankings.length < 10) return true;
-    return currentScore > globalRankings[globalRankings.length - 1].score;
-  }}
-  function startAutoRestartCountdown() {{
-      let count = 5; autoRestartMsg.style.display = 'block'; autoRestartMsg.innerText = `Restarting in ${{count}}...`;
-      if (autoRestartTimer) clearInterval(autoRestartTimer);
-      autoRestartTimer = setInterval(() => {{
-          count--; if (count > 0) autoRestartMsg.innerText = `Restarting in ${{count}}...`;
-          else {{ clearInterval(autoRestartTimer); resetGame(); }}
-      }}, 1000);
-  }}
-  async function submitScore() {{
-    const name = nameInput.value.trim() || "NO NAME";
-    nameInput.disabled = true; submitBtn.disabled = true; loadingMsg.style.display = 'block';
-    await sendScore(name, score); globalRankings = await fetchRankings();
-    loadingMsg.style.display = 'none'; nameInput.disabled = false; submitBtn.disabled = false;
-    inputSection.style.display = 'none'; showRankingTable(globalRankings);
-    if (isMobile) startAutoRestartCountdown();
-  }}
-  function showRankingTable(rankings) {{
-    if (!rankings) rankings = globalRankings; rankingBody.innerHTML = "";
-    for (let i = 0; i < 10; i++) {{
-        let r = rankings[i]; let row = document.createElement('tr');
-        if (r) row.innerHTML = `<td class="rank-col">${{i + 1}}</td><td style="${{r.score === score && r.name === nameInput.value ? "color: yellow; font-weight:bold;" : ""}}">${{r.name}}</td><td class="score-col">${{r.score}}</td>`;
-        else row.innerHTML = `<td class="rank-col">${{i + 1}}</td><td>---</td><td class="score-col">0</td>`;
-        rankingBody.appendChild(row);
-    }}
-  }}
-  function handleGameOver() {{
-    gameOver = true; player.state = 'dead'; stopBGM(); playGameOverSound(); addShake(15, 20); 
-    overlay.style.display = 'block'; finalScoreDisplay.innerText = "Final Score: " + score;
-    nameInput.value = ""; rankingBody.innerHTML = ""; rankLoading.style.display = "block";
-    fetchRankings().then(data => {{
-        globalRankings = data; rankLoading.style.display = "none"; showRankingTable(globalRankings);
-        if (score > 0 && checkRankIn(score)) {{ inputSection.style.display = 'block'; nameInput.focus(); }} 
-        else {{ inputSection.style.display = 'none'; if (isMobile) startAutoRestartCountdown(); }}
-    }});
-  }}
-  function playSound(type) {{
-    if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)(); if (audioCtx.state === 'suspended') audioCtx.resume();
-    const osc = audioCtx.createOscillator(); const gain = audioCtx.createGain(); osc.connect(gain); gain.connect(audioCtx.destination); const now = audioCtx.currentTime;
-    if (type === 'jump') {{ osc.type = 'square'; osc.frequency.setValueAtTime(150, now); osc.frequency.linearRampToValueAtTime(300, now + 0.1); gain.gain.setValueAtTime(0.1, now); gain.gain.exponentialRampToValueAtTime(0.01, now + 0.1); osc.start(now); osc.stop(now + 0.1); }} 
-    else if (type === 'coin') {{ osc.type = 'sine'; osc.frequency.setValueAtTime(1200, now); osc.frequency.setValueAtTime(1600, now + 0.05); gain.gain.setValueAtTime(0.1, now); gain.gain.exponentialRampToValueAtTime(0.01, now + 0.2); osc.start(now); osc.stop(now + 0.2); }} 
-    else if (type === 'hit') {{ osc.type = 'sawtooth'; osc.frequency.setValueAtTime(100, now); osc.frequency.linearRampToValueAtTime(50, now + 0.3); gain.gain.setValueAtTime(0.2, now); gain.gain.exponentialRampToValueAtTime(0.01, now + 0.3); osc.start(now); osc.stop(now + 0.3); }} 
-    else if (type === 'heal') {{ osc.type = 'sine'; osc.frequency.setValueAtTime(400, now); osc.frequency.linearRampToValueAtTime(800, now + 0.2); gain.gain.setValueAtTime(0.1, now); gain.gain.linearRampToValueAtTime(0, now + 0.3); osc.start(now); osc.stop(now + 0.3); }} 
-    else if (type === 'powerup') {{ osc.type = 'square'; osc.frequency.setValueAtTime(440, now); osc.frequency.setValueAtTime(880, now + 0.1); gain.gain.setValueAtTime(0.1, now); gain.gain.linearRampToValueAtTime(0, now + 0.5); osc.start(now); osc.stop(now + 0.5); }} 
-    else if (type === 'bad') {{ osc.type = 'sawtooth'; osc.frequency.setValueAtTime(300, now); osc.frequency.linearRampToValueAtTime(150, now + 0.3); gain.gain.setValueAtTime(0.1, now); gain.gain.linearRampToValueAtTime(0, now + 0.3); osc.start(now); osc.stop(now + 0.3); }}
-    else if (type === 'gate') {{ osc.type = 'sine'; osc.frequency.setValueAtTime(800, now); osc.frequency.linearRampToValueAtTime(1200, now + 0.3); gain.gain.setValueAtTime(0.2, now); gain.gain.linearRampToValueAtTime(0, now + 0.4); osc.start(now); osc.stop(now + 0.4); }}
-  }}
-  function doJump() {{
-      if (!gameOver && !isTitle) {{
-          if (!player.jumping || player.jumpCount < player.maxJump) {{
-              player.jumping = true; player.dy = -12; player.jumpCount++; playSound('jump'); startBGM();
-          }}
-      }}
-  }}
-
-  document.addEventListener('keydown', (e) => {{
-    if (document.activeElement === nameInput) {{ if (e.key === 'Enter' && !submitBtn.disabled) submitScore(); return; }}
-    if (player.state === 'dead' && e.code !== 'KeyR') return;
-    if (e.code === 'KeyF') {{ if (!document.fullscreenElement) document.documentElement.requestFullscreen(); else if (document.exitFullscreen) document.exitFullscreen(); }}
-    if (['KeyW', 'KeyA', 'KeyS', 'KeyD', 'KeyR', 'KeyF'].includes(e.code)) {{ e.preventDefault(); }}
-    if (e.code === 'KeyD') {{ keys.right = true; facingRight = true; startBGM(); }} if (e.code === 'KeyA') {{ keys.left = true; facingRight = false; startBGM(); }} if (e.code === 'KeyS') {{ keys.down = true; startBGM(); }} if (e.code === 'KeyW') {{ doJump(); }}
-    if (e.code === 'KeyR' && gameOver) resetGame();
-  }});
-  document.addEventListener('keyup', (e) => {{ if (e.code === 'KeyD') keys.right = false; if (e.code === 'KeyA') keys.left = false; if (e.code === 'KeyS') keys.down = false; }});
-
-  function updateTerrain() {{
-      const deleteThreshold = cameraX - 200;
-      for (let i = 0; i < terrainSegments.length; i++) {{ if (terrainSegments[i].x + terrainSegments[i].width < deleteThreshold) {{ terrainSegments.splice(i, 1); i--; }} }}
-      for (let i = 0; i < platforms.length; i++) {{ if (platforms[i].x + platforms[i].width < deleteThreshold) {{ platforms.splice(i, 1); i--; }} }}
-      for (let i = 0; i < checkpoints.length; i++) {{ if (checkpoints[i].x + 100 < deleteThreshold) {{ checkpoints.splice(i, 1); i--; }} }}
-      const generateThreshold = cameraX + canvas.width + 800;
-      while (lastGeneratedX < generateThreshold) {{ generateNextSegment(); }}
-      if (lastGeneratedX > nextCheckpointDist) {{ checkpoints.push({{ x: nextCheckpointDist, passed: false }}); nextCheckpointDist += 800 * 10; }}
-  }}
-
-  function generateNextSegment() {{
-      if (terrainSegments.length === 0) {{ terrainSegments.push({{ x: 0, width: 800, topY: BASE_GROUND_Y, level: 0 }}); lastGeneratedX = 800; return; }}
-      let prevSeg = terrainSegments[terrainSegments.length - 1];
-      let gapWidth = 0;
-      if (Math.random() < 0.25 && prevSeg.width > 100) gapWidth = Math.random() * 100 + 80; 
-      let newX = lastGeneratedX + gapWidth; let width = Math.random() * 200 + 150; 
-      const SEG_HEIGHTS = [BASE_GROUND_Y, BASE_GROUND_Y - 50, BASE_GROUND_Y - 100];
-      let prevLevel = prevSeg.level !== undefined ? prevSeg.level : 0;
-      let delta = Math.floor(Math.random() * 3) - 1; 
-      let newLevel = Math.min(2, Math.max(0, prevLevel + delta));
-      let topY = SEG_HEIGHTS[newLevel];
-      terrainSegments.push({{ x: newX, width: width, topY: topY, level: newLevel }});
-      lastGeneratedX = newX + width;
-
-      if (Math.random() < 0.3) {{
-          let pW = player.width * (3 + Math.random() * 2); let pX = newX + Math.random() * (width - pW); let pY = topY - 100 - Math.random() * 80; 
-          if (pY < 100) pY = 100;
-          platforms.push({{ x: pX, y: pY, width: pW, height: 20 }});
-          if (Math.random() < 0.5) spawnEnemyOnTerrain(pX, pW, pY);
-      }}
-      if (gapWidth === 0 && width > 100) {{ 
-           if (Math.random() < 1.0) spawnEnemyOnTerrain(newX, width, topY); 
-           if (Math.random() < 0.8) spawnItemOnTerrain(newX, width, topY); 
-      }}
-  }}
-  
+  // --- 地形・敵生成ロジック ---
   function spawnEnemyOnTerrain(tx, tw, ty) {{
       let type = Math.random() < 0.5 ? 'ground' : 'flying'; 
       let speedBase = 2 + level * 0.05; 
@@ -596,22 +402,49 @@ game_html = f"""
 
   function spawnReverseEnemy() {{
       let speedBase = 4; let multiplier = getSpeedMultiplier(); let finalSpeed = speedBase * multiplier;
-      let ex = cameraX - 60; let ey = BASE_GROUND_Y - 52; 
-      if (Math.random() < 0.5) ey = Math.random() * 200 + 50; 
+      let ex = cameraX - 60; let ey = BASE_GROUND_Y - 52; if (Math.random() < 0.5) ey = Math.random() * 200 + 50; 
       enemies.push({{ x: ex, y: ey, width: 52, height: 52, dx: finalSpeed, dy: 0, type: 'enemy3', angle: 0, animIndex: 0, animTimer: 0, isReverse: true }});
   }}
 
   function spawnItemOnTerrain(tx, tw, ty) {{
       const r = Math.random(); let type = 'coin';
-      if (r < 0.005) type = 'star'; 
-      else if (r < 0.035) type = 'trap'; 
-      else if (r < 0.045) type = 'heal'; 
-      else if (r < 0.050) type = 'crown'; 
-      else type = 'coin';
-
+      if (r < 0.005) type = 'star'; else if (r < 0.035) type = 'trap'; else if (r < 0.045) type = 'heal'; else if (r < 0.050) type = 'crown'; else type = 'coin';
       let ix = tx + Math.random() * (tw - 50) + 25; let iy = ty - 45 - Math.random() * 100; 
       let dx = 0; if (type === 'crown') dx = -2; 
       items.push({{ x: ix, y: iy, width: 45, height: 45, dx: dx, isCollected: false, animIndex: 0, animTimer: 0, type: type }}); 
+  }}
+
+  function generateNextSegment() {{
+      if (terrainSegments.length === 0) {{ terrainSegments.push({{ x: 0, width: 800, topY: BASE_GROUND_Y, level: 0 }}); lastGeneratedX = 800; return; }}
+      let prevSeg = terrainSegments[terrainSegments.length - 1];
+      let gapWidth = 0; if (Math.random() < 0.25 && prevSeg.width > 100) gapWidth = Math.random() * 100 + 80; 
+      let newX = lastGeneratedX + gapWidth; let width = Math.random() * 200 + 150; 
+      const SEG_HEIGHTS = [BASE_GROUND_Y, BASE_GROUND_Y - 50, BASE_GROUND_Y - 100];
+      let prevLevel = prevSeg.level !== undefined ? prevSeg.level : 0;
+      let delta = Math.floor(Math.random() * 3) - 1; let newLevel = Math.min(2, Math.max(0, prevLevel + delta));
+      let topY = SEG_HEIGHTS[newLevel];
+      terrainSegments.push({{ x: newX, width: width, topY: topY, level: newLevel }});
+      lastGeneratedX = newX + width;
+
+      if (Math.random() < 0.3) {{
+          let pW = player.width * (3 + Math.random() * 2); let pX = newX + Math.random() * (width - pW); let pY = topY - 100 - Math.random() * 80; 
+          if (pY < 100) pY = 100; platforms.push({{ x: pX, y: pY, width: pW, height: 20 }});
+          if (Math.random() < 0.5) spawnEnemyOnTerrain(pX, pW, pY);
+      }}
+      if (gapWidth === 0 && width > 100) {{ 
+           if (Math.random() < 1.0) spawnEnemyOnTerrain(newX, width, topY); 
+           if (Math.random() < 0.8) spawnItemOnTerrain(newX, width, topY); 
+      }}
+  }}
+
+  function updateTerrain() {{
+      const deleteThreshold = cameraX - 200;
+      for (let i = 0; i < terrainSegments.length; i++) {{ if (terrainSegments[i].x + terrainSegments[i].width < deleteThreshold) {{ terrainSegments.splice(i, 1); i--; }} }}
+      for (let i = 0; i < platforms.length; i++) {{ if (platforms[i].x + platforms[i].width < deleteThreshold) {{ platforms.splice(i, 1); i--; }} }}
+      for (let i = 0; i < checkpoints.length; i++) {{ if (checkpoints[i].x + 100 < deleteThreshold) {{ checkpoints.splice(i, 1); i--; }} }}
+      const generateThreshold = cameraX + canvas.width + 800;
+      while (lastGeneratedX < generateThreshold) {{ generateNextSegment(); }}
+      if (lastGeneratedX > nextCheckpointDist) {{ checkpoints.push({{ x: nextCheckpointDist, passed: false }}); nextCheckpointDist += 800 * 10; }}
   }}
   
   function getGroundYUnderPlayer() {{
@@ -630,6 +463,51 @@ game_html = f"""
   }}
   function updateLevel() {{ const newLevel = Math.floor(score / 500) + 1; if (newLevel > level) {{ level = newLevel; gameSpeed = 1.0 + (level * 0.05); levelEl.innerText = level; if(hp < 3) {{ hp++; updateHearts(); }} }} }}
   function updateHearts() {{ let h = ""; for(let i=0; i<hp; i++) h += "❤️"; heartsEl.innerText = h; }}
+  
+  // --- メイン処理系 ---
+  const joystickArea = document.getElementById('joystick-area');
+  const joystickKnob = document.getElementById('joystick-knob');
+  let stickTouchId = null;
+  if (joystickArea) {{
+      const maxRadius = 40; const center = {{ x: 60, y: 60 }}; 
+      joystickArea.addEventListener('touchstart', (e) => {{ e.preventDefault(); const touch = e.changedTouches[0]; stickTouchId = touch.identifier; startBGM(); updateStick(touch); }}, {{passive: false}});
+      joystickArea.addEventListener('touchmove', (e) => {{ e.preventDefault(); for (let i = 0; i < e.changedTouches.length; i++) {{ if (e.changedTouches[i].identifier === stickTouchId) {{ updateStick(e.changedTouches[i]); break; }} }} }}, {{passive: false}});
+      const endStick = (e) => {{ e.preventDefault(); for (let i = 0; i < e.changedTouches.length; i++) {{ if (e.changedTouches[i].identifier === stickTouchId) {{ stickTouchId = null; joystickKnob.style.transform = `translate(-50%, -50%) translate(0px, 0px)`; keys.left = false; keys.right = false; keys.down = false; break; }} }} }};
+      joystickArea.addEventListener('touchend', endStick); joystickArea.addEventListener('touchcancel', endStick);
+      function updateStick(touch) {{
+          const rect = joystickArea.getBoundingClientRect(); let x = touch.clientX - rect.left - center.x; let y = touch.clientY - rect.top - center.y;
+          const distance = Math.sqrt(x*x + y*y);
+          if (distance > maxRadius) {{ const angle = Math.atan2(y, x); x = Math.cos(angle) * maxRadius; y = Math.sin(angle) * maxRadius; }}
+          joystickKnob.style.transform = `translate(-50%, -50%) translate(${{x}}px, ${{y}}px)`;
+          keys.left = false; keys.right = false; keys.down = false;
+          if (distance > 10) {{ if (Math.abs(x) > Math.abs(y)) {{ if (x > 0) keys.right = true; else keys.left = true; }} else {{ if (y > 0) keys.down = true; }} }}
+      }}
+  }}
+  const btnJump = document.getElementById('btn-jump');
+  if(btnJump) {{ btnJump.addEventListener('touchstart', (e) => {{ e.preventDefault(); doJump(); }}); }}
+
+  function doJump() {{
+      if (!gameOver && !isTitle) {{
+          if (!player.jumping || player.jumpCount < player.maxJump) {{
+              player.jumping = true; player.dy = -12; player.jumpCount++; playSound('jump'); startBGM();
+          }}
+      }}
+  }}
+  document.addEventListener('keydown', (e) => {{
+    if (document.activeElement === nameInput) {{ if (e.key === 'Enter' && !submitBtn.disabled) submitScore(); return; }}
+    if (player.state === 'dead' && e.code !== 'KeyR') return;
+    if (e.code === 'KeyF') {{ if (!document.fullscreenElement) document.documentElement.requestFullscreen(); else if (document.exitFullscreen) document.exitFullscreen(); }}
+    if (['KeyW', 'KeyA', 'KeyS', 'KeyD', 'KeyR', 'KeyF'].includes(e.code)) {{ e.preventDefault(); }}
+    if (e.code === 'KeyD') {{ keys.right = true; facingRight = true; startBGM(); }} if (e.code === 'KeyA') {{ keys.left = true; facingRight = false; startBGM(); }} if (e.code === 'KeyS') {{ keys.down = true; startBGM(); }} if (e.code === 'KeyW') {{ doJump(); }}
+    if (e.code === 'KeyR' && gameOver) resetGame();
+  }});
+  document.addEventListener('keyup', (e) => {{ if (e.code === 'KeyD') keys.right = false; if (e.code === 'KeyA') keys.left = false; if (e.code === 'KeyS') keys.down = false; }});
+
+  const API_URL = "{GAS_API_URL}";
+  async function fetchRankings() {{ try {{ const response = await fetch(API_URL); return await response.json(); }} catch (e) {{ return []; }} }}
+  async function sendScore(name, score) {{ try {{ await fetch(API_URL, {{ method: 'POST', body: JSON.stringify({{ name: name, score: score }}) }}); }} catch (e) {{}} }}
+  fetchRankings().then(data => {{ globalRankings = data; }});
+  function checkRankIn(currentScore) {{ if (globalRankings.length < 10) return true; return currentScore > globalRankings[globalRankings.length - 1].score; }}
 
   function resetGame() {{
     if (autoRestartTimer) clearInterval(autoRestartTimer); autoRestartMsg.style.display = 'none';
@@ -650,20 +528,6 @@ game_html = f"""
     updateHearts(); initClouds(); checkOrientationAndResize(); updateTerrain(); 
     const startGround = getGroundYUnderPlayer(); const gY = startGround !== null ? startGround : BASE_GROUND_Y; 
     player.y = gY - player.height; overlay.style.display = 'none';
-  }}
-
-  function updatePlayerAnimation() {{
-    const prevState = player.state;
-    if (hp <= 0) player.state = 'dead'; else if (player.jumping) player.state = 'jump'; else if (keys.down) player.state = 'squat'; else if (keys.right || keys.left) player.state = 'run'; else player.state = 'idle';
-    if (player.state !== prevState) {{ player.animTimer = 0; player.animIndex = 0; player.idlePingPong = 1; }}
-    player.animTimer++;
-    switch (player.state) {{
-        case 'idle': if (player.animTimer > player.animSpeedIdle) {{ player.animIndex += player.idlePingPong; if (player.animIndex >= 2) player.idlePingPong = -1; if (player.animIndex <= 0) player.idlePingPong = 1; player.animTimer = 0; }} break;
-        case 'run': if (player.animTimer > player.animSpeedRun) {{ player.animIndex = (player.animIndex + 1) % 3; player.animTimer = 0; }} break;
-        case 'jump': if (player.dy < -5) player.animIndex = 0; else if (player.dy < 0) player.animIndex = 1; else if (player.dy < 5) player.animIndex = 2; else player.animIndex = 1; break;
-        case 'squat': player.animIndex = 0; break;
-        case 'dead': player.animIndex = 0; break;
-    }}
   }}
 
   function update() {{
