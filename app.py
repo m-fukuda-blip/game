@@ -6,8 +6,8 @@ st.set_page_config(page_title="Action Game with Ranking & Animation", layout="wi
 # タイトル画像を表示
 st.image("https://raw.githubusercontent.com/m-fukuda-blip/game/main/gametitlefix.png", use_column_width=True)
 
-st.caption("機能：❤️ライフ制 / 🆙レベルアップ / ☁️背景変化 / 🔊効果音 / 🏆グローバルランキング / 🏃‍♂️アニメーション / 🎵加速するBGM / ✨アイテム効果 / 🧗‍♂️段差判定 / 💥コンボボーナス / 🫨画面シェイク / 📏サイズ調整版")
-st.write("操作方法: **W** ジャンプ / **A** 左移動 / **D** 右移動 / **R** リセット / **F** 全画面")
+st.caption("機能：❤️ライフ / 🆙レベル / ☁️背景変化 / 🔊音 / 🏆ランク / 🏃‍♂️アニメ / 🎵BGM / ✨アイテム / 🧗‍♂️段差 / 💥コンボ / 🫨シェイク / 📏サイズ / 🦘2段ジャンプ / ✨パーティクル")
+st.write("操作方法: **W** ジャンプ(2回可) / **A** 左移動 / **D** 右移動 / **R** リセット / **F** 全画面")
 
 # ==========================================
 # 👇 ここに GAS (Google Apps Script) のウェブアプリURLを貼ってください
@@ -141,6 +141,7 @@ game_html = f"""
   @media (hover: none) and (pointer: coarse) {{
     #mobile-controls {{ display: flex; }}
     .restart-msg {{ display: none; }}
+    #mobile-retry-btn {{ display: block !important; }}
   }}
 
   .control-group {{
@@ -292,6 +293,46 @@ game_html = f"""
   }}
 
   // ==========================================
+  // ★ パーティクルシステム (追加)
+  // ==========================================
+  let particles = [];
+
+  function spawnParticles(x, y, color, count = 8) {{
+      for (let i = 0; i < count; i++) {{
+          particles.push({{
+              x: x,
+              y: y,
+              vx: (Math.random() - 0.5) * 8,
+              vy: (Math.random() - 0.5) * 8,
+              life: 30 + Math.random() * 20,
+              size: 4 + Math.random() * 4,
+              color: color
+          }});
+      }}
+  }}
+
+  function updateAndDrawParticles() {{
+      for (let i = 0; i < particles.length; i++) {{
+          let p = particles[i];
+          p.x += p.vx;
+          p.y += p.vy;
+          p.vy += 0.2; // 重力
+          p.life--;
+          p.size *= 0.95; // 徐々に小さく
+
+          ctx.fillStyle = p.color;
+          ctx.globalAlpha = Math.min(p.life / 20, 1.0); // フェードアウト
+          ctx.fillRect(p.x, p.y, p.size, p.size);
+          ctx.globalAlpha = 1.0;
+
+          if (p.life <= 0 || p.size < 0.5) {{
+              particles.splice(i, 1);
+              i--;
+          }}
+      }}
+  }}
+
+  // ==========================================
   // BGM設定
   // ==========================================
   let audioCtx, isBgmPlaying = false;
@@ -403,7 +444,6 @@ game_html = f"""
       return wrapper;
   }}
 
-  // ★修正: キャラクターサイズ 40 -> 60 (1.5倍)
   const P_W = 60; const P_H = 60; 
   const playerAnim = {{ idle: [], run: [], jump: [], dead: null }};
   
@@ -412,13 +452,11 @@ game_html = f"""
   for(let i=1; i<=3; i++) {{ playerAnim.jump.push(loadResized(`https://raw.githubusercontent.com/m-fukuda-blip/game/main/Jump0${{i}}.png`, P_W, P_H)); }}
   playerAnim.dead = loadResized("https://raw.githubusercontent.com/m-fukuda-blip/game/main/Dead.png", P_W, P_H);
 
-  // ★修正: 敵サイズ 35 -> 52 (約1.5倍)
   const enemyAnim = [];
   const enemy2Anim = [];
   for(let i=1; i<=2; i++) {{ enemyAnim.push(loadResized(`https://raw.githubusercontent.com/m-fukuda-blip/game/main/EnemyAction0${{i}}.png`, 52, 52)); }}
   for(let i=1; i<=2; i++) {{ enemy2Anim.push(loadResized(`https://raw.githubusercontent.com/m-fukuda-blip/game/main/Enemy2Action0${{i}}.png`, 52, 52)); }}
   
-  // ★修正: アイテムサイズ 30 -> 45 (1.5倍)
   const itemImgWrapper = loadResized("https://raw.githubusercontent.com/m-fukuda-blip/game/main/coin.png", 45, 45);
   const capsuleImgWrapper = loadResized("https://raw.githubusercontent.com/m-fukuda-blip/game/main/capsule.png", 45, 45);
   const mutekiImgWrapper = loadResized("https://raw.githubusercontent.com/m-fukuda-blip/game/main/muteki.png", 45, 45);
@@ -427,7 +465,6 @@ game_html = f"""
   const itemEffectAnim = [];
   for(let i=1; i<=3; i++) {{ itemEffectAnim.push(loadResized(`https://raw.githubusercontent.com/m-fukuda-blip/game/main/ItemAction0${{i}}.png`, 45, 45)); }}
 
-  // ★修正: 雲サイズ 170 -> 255 (1.5倍)
   const cloudImgWrappers = [];
   for(let i=1; i<=4; i++) {{ 
       cloudImgWrappers.push(loadResized(`https://raw.githubusercontent.com/m-fukuda-blip/game/main/cloud${{i}}.png`, 255, 180)); 
@@ -460,9 +497,13 @@ game_html = f"""
   
   let autoRestartTimer = null;
 
-  // ★修正: プレイヤーサイズ初期値 40 -> 60
   const player = {{ 
-      x: 100, y: 0, width: 60, height: 60, speed: 5, dx: 0, dy: 0, jumping: false,
+      x: 100, y: 0, width: 60, height: 60, speed: 5, dx: 0, dy: 0, 
+      jumping: false,
+      // ★追加: 2段ジャンプ用変数
+      jumpCount: 0, 
+      maxJump: 2,
+      
       state: 'idle', animIndex: 0, animTimer: 0, 
       animSpeedIdle: 15, animSpeedRun: 8, idlePingPong: 1,
       combo: 0 
@@ -572,7 +613,6 @@ game_html = f"""
     }});
   }}
 
-  // playSound省略 (変更なし)
   function playSound(type) {{
     if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
     if (audioCtx.state === 'suspended') audioCtx.resume();
@@ -607,6 +647,23 @@ game_html = f"""
         osc.start(now); osc.stop(now + 0.3);
     }}
   }}
+  
+  // ★ ジャンプ処理関数（共通化）
+  function doJump() {{
+      if (!gameOver && !isTitle) {{
+          // 地面にいるか、まだ2段目のジャンプが残っている場合
+          if (!player.jumping || player.jumpCount < player.maxJump) {{
+              player.jumping = true;
+              player.dy = -12;
+              player.jumpCount++;
+              playSound('jump');
+              startBGM();
+              
+              // パーティクル発生（ジャンプ時）
+              spawnParticles(player.x + player.width/2, player.y + player.height, 'white', 5);
+          }}
+      }}
+  }}
 
   const btnLeft = document.getElementById('btn-left');
   const btnRight = document.getElementById('btn-right');
@@ -626,7 +683,7 @@ game_html = f"""
   }}
   if(btnJump) {{
       btnJump.addEventListener('touchstart', (e) => {{
-          if (!player.jumping && !gameOver && !isTitle) {{ player.jumping = true; player.dy = -12; playSound('jump'); startBGM(); }}
+          doJump(); // ★共通ジャンプ関数を使用
       }});
   }}
 
@@ -637,7 +694,9 @@ game_html = f"""
     if (['KeyW', 'KeyA', 'KeyD', 'KeyR', 'KeyF'].includes(e.code)) {{ e.preventDefault(); }}
     if (e.code === 'KeyD') {{ keys.right = true; facingRight = true; startBGM(); }} 
     if (e.code === 'KeyA') {{ keys.left = true; facingRight = false; startBGM(); }} 
-    if (e.code === 'KeyW') {{ if (!player.jumping && !gameOver && !isTitle) {{ player.jumping = true; player.dy = -12; playSound('jump'); startBGM(); }} }}
+    if (e.code === 'KeyW') {{ 
+        doJump(); // ★共通ジャンプ関数を使用
+    }}
     if (e.code === 'KeyR' && gameOver) resetGame();
   }});
 
@@ -650,7 +709,6 @@ game_html = f"""
     terrainSegments = [];
     let x = 0; let prevLevel = 0; const SEG_HEIGHTS = [BASE_GROUND_Y, BASE_GROUND_Y - 40, BASE_GROUND_Y - 80];
     while (x < canvas.width + 100) {{
-        // ★修正: 地面の幅を少し大きく調整 (120 -> 180)
         let width = Math.random() * 180 + 120; let gapWidth = 0;
         if (x > 250 && Math.random() < 0.25) gapWidth = Math.random() * 80 + 60;
         x += gapWidth;
@@ -672,7 +730,6 @@ game_html = f"""
   function spawnEnemy() {{
     let type = Math.random() < 0.5 ? 'ground' : 'flying'; let speedBase = Math.random() * 3 + 2;
     if (score >= 2000 && Math.random() < 0.3) {{ type = 'hard'; speedBase = 5; }}
-    // ★修正: 敵サイズ 35 -> 52
     let enemy = {{ x: canvas.width, y: 0, width: 52, height: 52, dx: -(speedBase * gameSpeed), dy: 0, type: type, angle: 0, animIndex: 0, animTimer: 0 }};
     const SAFE_Y_LIMIT = BASE_GROUND_Y - 40; 
     if (type === 'ground' || type === 'hard') {{ 
@@ -690,7 +747,6 @@ game_html = f"""
     else if (r < 0.035) type = 'trap';
     else if (r < 0.045) type = 'heal';
     else type = 'coin';
-    // ★修正: アイテムサイズ 30 -> 45
     items.push({{ x: canvas.width, y: Math.random() * 150 + 150, width: 45, height: 45, dx: -2, isCollected: false, animIndex: 0, animTimer: 0, type: type }}); 
     nextItemSpawn = frameCount + Math.random() * 60 + 40; 
   }}
@@ -717,9 +773,12 @@ game_html = f"""
 
     player.x = 100; player.y = 0; player.dx = 0; player.dy = 0;
     player.state = 'idle'; player.animIndex = 0; player.animTimer = 0; player.idlePingPong = 1;
-    player.combo = 0; 
+    player.combo = 0;
+    // ★リセット時にジャンプカウントもリセット
+    player.jumpCount = 0;
+    
     score = 0; level = 1; gameSpeed = 1.0; hp = 3;
-    enemies = []; items = []; floatingTexts = []; 
+    enemies = []; items = []; floatingTexts = []; particles = [];
     gameOver = false; frameCount = 0;
     isInvincible = false; nextEnemySpawn = 50; nextItemSpawn = 30;
     scoreEl.innerText = score; levelEl.innerText = level;
@@ -759,7 +818,6 @@ game_html = f"""
     if (gameOver && player.state !== 'dead') return; if (player.state === 'dead') return;
     if (isTitle) {{ updateClouds(); return; }}
 
-    // ★追加: シェイク更新
     updateShake();
 
     frameCount++; updateClouds();
@@ -795,7 +853,18 @@ game_html = f"""
     if (player.x + player.width > canvas.width) player.x = canvas.width - player.width;
 
     const groundY = getGroundYUnderPlayer();
-    if (groundY !== null) {{ if (player.y + player.height >= groundY && player.dy >= 0) {{ player.y = groundY - player.height; player.dy = 0; player.jumping = false; player.combo = 0; }} }} 
+    if (groundY !== null) {{ 
+        if (player.y + player.height >= groundY && player.dy >= 0) {{ 
+            player.y = groundY - player.height; 
+            player.dy = 0; 
+            player.jumping = false; 
+            player.combo = 0; 
+            // ★着地でジャンプカウントリセット
+            player.jumpCount = 0;
+            // 着地エフェクト
+            if (Math.abs(player.dy) > 5) spawnParticles(player.x + player.width/2, player.y + player.height, 'white', 3);
+        }} 
+    }} 
     else {{ if (player.y > canvas.height) {{ if (!gameOver) {{ hp = 0; updateHearts(); playSound('hit'); handleGameOver(); }} }} }}
     
     updatePlayerAnimation();
@@ -803,6 +872,8 @@ game_html = f"""
 
     if (frameCount >= nextEnemySpawn) spawnEnemy();
     if (frameCount >= nextItemSpawn) spawnItem();
+
+    updateAndDrawParticles(); // パーティクル更新（描画はdraw内で行うため計算のみ）
 
     for (let i = 0; i < floatingTexts.length; i++) {{
         let ft = floatingTexts[i];
@@ -824,10 +895,16 @@ game_html = f"""
             if (item.x + item.width < 0) {{ items.splice(i, 1); i--; continue; }} 
             if (player.x < item.x + item.width && player.x + player.width > item.x && player.y < item.y + item.height && player.y + player.height > item.y) {{
                 item.isCollected = true; item.animIndex = 0; item.animTimer = 0;
-                if (item.type === 'coin') {{ score += 50; playSound('coin'); }} 
-                else if (item.type === 'heal') {{ hp = 3; updateHearts(); playSound('heal'); }} 
-                else if (item.type === 'star') {{ superMode = true; superModeTimer = 900; isInvincible = true; invincibleTimer = 900; slowMode = false; slowModeTimer = 0; playSound('powerup'); }} 
-                else if (item.type === 'trap') {{ if (!superMode) {{ slowMode = true; slowModeTimer = 600; playSound('bad'); }} }}
+                
+                if (item.type === 'coin') {{ 
+                    score += 50; playSound('coin'); 
+                    // ★キラキラパーティクル
+                    spawnParticles(item.x, item.y, 'gold', 5);
+                }} 
+                else if (item.type === 'heal') {{ hp = 3; updateHearts(); playSound('heal'); spawnParticles(item.x, item.y, 'pink', 8); }} 
+                else if (item.type === 'star') {{ superMode = true; superModeTimer = 900; isInvincible = true; invincibleTimer = 900; slowMode = false; slowModeTimer = 0; playSound('powerup'); spawnParticles(item.x, item.y, 'yellow', 10); }} 
+                else if (item.type === 'trap') {{ if (!superMode) {{ slowMode = true; slowModeTimer = 600; playSound('bad'); spawnParticles(item.x, item.y, 'purple', 8); }} }}
+                
                 scoreEl.innerText = score; updateLevel(); 
             }}
         }}
@@ -851,13 +928,12 @@ game_html = f"""
                 score += bonusPoints; scoreEl.innerText = score; playSound('coin'); updateLevel(); 
                 if (multiplier > 1) {{ floatingTexts.push({{ x: player.x, y: player.y - 20, text: "BONUS x" + multiplier, life: 60, dy: -1.5 }}); }}
                 
-                // ★修正: 敵を踏んだ時のシェイクを削除
-                // addShake(5, 10); 
+                // ★敵撃破パーティクル
+                spawnParticles(e.x, e.y, 'red', 8);
 
             }} else {{ 
                 if (!isInvincible) {{ 
                     hp--; if (hp < 0) hp = 0; updateHearts(); playSound('hit');
-                    // ★ダメージ時のシェイク（大）
                     addShake(15, 20);
                     if (hp <= 0) handleGameOver(); 
                     else {{ isInvincible = true; invincibleTimer = 60; enemies.splice(i, 1); i--; }} 
@@ -867,25 +943,18 @@ game_html = f"""
     }}
   }}
 
-  function drawObj(wrapper, x, y, w, h, fallbackColor) {{
-    if (wrapper && wrapper.ready && wrapper.img) ctx.drawImage(wrapper.img, x, y, w, h);
-    else {{ ctx.fillStyle = fallbackColor; ctx.fillRect(x, y, w, h); }}
-  }}
-
   function draw() {{
     ctx.clearRect(0, 0, canvas.width, canvas.height);
     
-    // ★追加: 時間帯による空の色変更
     let skyColor;
-    if (score < 1000) skyColor = '#87CEEB'; // 昼
-    else if (score < 3000) skyColor = '#FF7F50'; // 夕方
-    else if (score < 5000) skyColor = '#191970'; // 夜
-    else skyColor = '#4B0082'; // 宇宙
+    if (score < 1000) skyColor = '#87CEEB'; 
+    else if (score < 3000) skyColor = '#FF7F50'; 
+    else if (score < 5000) skyColor = '#191970'; 
+    else skyColor = '#4B0082'; 
 
     ctx.fillStyle = skyColor; 
     ctx.fillRect(0, 0, canvas.width, canvas.height);
     
-    // ★追加: シェイク適用開始
     ctx.save();
     ctx.translate(screenShake.x, screenShake.y);
 
@@ -941,10 +1010,17 @@ game_html = f"""
     else {{ drawObj(currentWrapper, player.x, player.y, player.width, player.height, 'blue'); }}
     ctx.restore();
 
+    // ★ パーティクル描画
+    for(let p of particles) {{
+        ctx.fillStyle = p.color;
+        ctx.globalAlpha = Math.min(p.life / 20, 1.0);
+        ctx.fillRect(p.x, p.y, p.size, p.size);
+        ctx.globalAlpha = 1.0;
+    }}
+
     ctx.fillStyle = "yellow"; ctx.font = "bold 20px Courier New"; ctx.strokeStyle = "black"; ctx.lineWidth = 3;
     for (let ft of floatingTexts) {{ ctx.strokeText(ft.text, ft.x, ft.y); ctx.fillText(ft.text, ft.x, ft.y); }}
 
-    // ★追加: シェイク適用終了
     ctx.restore();
   }}
 
