@@ -368,7 +368,8 @@
   };
    
   let enemies = [], items = [], clouds = [];
-  const keys = { right: false, left: false, up: false, down: false }; 
+  // Debug key states added (k, o)
+  const keys = { right: false, left: false, up: false, down: false, k: false, o: false }; 
 
   // ★重要: Python側でここが置換される
   const API_URL = "{GAS_API_URL}";
@@ -433,10 +434,22 @@
     if (player.state === 'dead' && e.code !== 'KeyR') return;
     if (e.code === 'KeyF') { if (!document.fullscreenElement) document.documentElement.requestFullscreen(); else if (document.exitFullscreen) document.exitFullscreen(); }
     if (['KeyW', 'KeyA', 'KeyS', 'KeyD', 'KeyR', 'KeyF'].includes(e.code)) { e.preventDefault(); }
-    if (e.code === 'KeyD') { keys.right = true; facingRight = true; startBGM(); } if (e.code === 'KeyA') { keys.left = true; facingRight = false; startBGM(); } if (e.code === 'KeyS') { keys.down = true; startBGM(); } if (e.code === 'KeyW') { doJump(); }
+    if (e.code === 'KeyD') { keys.right = true; facingRight = true; startBGM(); } 
+    if (e.code === 'KeyA') { keys.left = true; facingRight = false; startBGM(); } 
+    if (e.code === 'KeyS') { keys.down = true; startBGM(); } 
+    if (e.code === 'KeyW') { doJump(); }
     if (e.code === 'KeyR' && gameOver) resetGame();
+    // Debug keys
+    if (e.code === 'KeyK') keys.k = true;
+    if (e.code === 'KeyO') keys.o = true;
   });
-  document.addEventListener('keyup', (e) => { if (e.code === 'KeyD') keys.right = false; if (e.code === 'KeyA') keys.left = false; if (e.code === 'KeyS') keys.down = false; });
+  document.addEventListener('keyup', (e) => { 
+      if (e.code === 'KeyD') keys.right = false; 
+      if (e.code === 'KeyA') keys.left = false; 
+      if (e.code === 'KeyS') keys.down = false; 
+      if (e.code === 'KeyK') keys.k = false;
+      if (e.code === 'KeyO') keys.o = false;
+  });
 
   function updateTerrain() {
       const deleteThreshold = cameraX - 200;
@@ -560,6 +573,15 @@
     updateShake(); frameCount++; updateClouds();
     if (isInvincible) { invincibleTimer--; if (invincibleTimer <= 0) isInvincible = false; }
      
+    // Debug Command Check (K + O)
+    if (keys.k && keys.o && score < 9999) {
+        score = 9999;
+        scoreEl.innerText = score;
+        updateLevel();
+        playSound('powerup');
+        floatingTexts.push({ x: player.x, y: player.y - 60, text: "DEBUG: SCORE 9999", life: 120, dy: -0.5 });
+    }
+
     let statusText = "";
     if (superMode) { superModeTimer--; statusText += "🌟SUPER MODE! "; if (superModeTimer <= 0) superMode = false; }
     // ★王冠ボーナス処理
