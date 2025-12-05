@@ -3,21 +3,17 @@ import streamlit.components.v1 as components
 
 st.set_page_config(page_title="Action Game with Ranking & Animation", layout="wide")
 
-# ★修正: Streamlitの余計なUI（ヘッダー、フッター、余白）を消して画面を固定するCSS
+# Streamlitの余計なUIを消して画面を固定するCSS
 st.markdown("""
     <style>
         #MainMenu {visibility: hidden;}
         footer {visibility: hidden;}
         header {visibility: hidden;}
         .block-container {
-            padding-top: 0rem !important;
-            padding-bottom: 0rem !important;
-            padding-left: 0rem !important;
-            padding-right: 0rem !important;
+            padding: 0 !important;
             margin: 0 !important;
             max-width: 100% !important;
         }
-        /* 親ページのスクロールも禁止 */
         body {
             overflow: hidden !important;
             overscroll-behavior: none;
@@ -28,7 +24,7 @@ st.markdown("""
 # タイトル画像を表示
 st.image("https://raw.githubusercontent.com/m-fukuda-blip/game/main/gametitlefix.png", use_column_width=True)
 
-st.caption("機能：❤️ライフ / 🆙レベル / ☁️背景変化 / 🔊音 / 🏆ランク / 🏃‍♂️アニメ / 🎵BGM / ✨アイテム / 🧗‍♂️段差 / 💥コンボ / 🫨シェイク / 📏サイズ / 🦘2段ジャンプ / ✨撃破演出 / ⬇️しゃがみ / ⏩横スクロール / 🧱空中足場 / ⛩️ゲート / 🗻パララックス背景 / 📱スマホ横画面固定")
+st.caption("機能：❤️ライフ / 🆙レベル / ☁️背景変化 / 🔊音 / 🏆ランク / 🏃‍♂️アニメ / 🎵BGM / ✨アイテム / 🧗‍♂️段差 / 💥コンボ / 🫨シェイク / 📏サイズ / 🦘2段ジャンプ / ✨撃破演出 / ⬇️しゃがみ / ⏩横スクロール / 🧱空中足場 / ⛩️ゲート / 🗻パララックス / 🕹️スティック操作")
 st.write("操作方法: **W** ジャンプ(2回可) / **A** 左移動 / **D** 右移動 / **S** しゃがみ / **R** リセット / **F** 全画面")
 
 # ==========================================
@@ -51,35 +47,28 @@ game_html = f"""
   }}
 
   body {{ 
-    overflow: hidden; /* スクロール禁止 */
+    overflow: hidden; 
     background-color: #222; 
     color: white; 
     font-family: 'Courier New', sans-serif; 
     display: flex; 
     justify-content: center; 
     align-items: center; 
-    
-    /* ★修正: 画面固定を強化 */
     position: fixed; 
     top: 0; left: 0; right: 0; bottom: 0;
     overscroll-behavior: none;
-    
-    /* スマホでの誤操作防止 */
     user-select: none;
     -webkit-user-select: none;
     -webkit-touch-callout: none;
     touch-action: none;
   }}
   
-  /* Canvas設定 */
   canvas {{ background-color: #87CEEB; border: 4px solid #fff; box-shadow: 0 0 20px rgba(0,0,0,0.5); }}
   
-  /* --- UIレイヤー --- */
   #ui-layer {{ position: absolute; top: 20px; left: 20px; font-size: 24px; font-weight: bold; color: black; pointer-events: none; text-shadow: 1px 1px 0 #fff; z-index: 5; }}
   #hearts {{ color: red; font-size: 30px; }}
   #status-msg {{ font-size: 20px; margin-top: 5px; }}
 
-  /* --- タイトル画面 --- */
   #title-screen {{
     position: absolute; top: 0; left: 0; width: 100%; height: 100%;
     display: flex; flex-direction: column; justify-content: center; align-items: center;
@@ -87,306 +76,196 @@ game_html = f"""
     pointer-events: none;
   }}
   
-  .title-img {{
-    max-width: 22%; 
-    height: auto; 
-    margin-bottom: 20px;
-    opacity: 0; 
-  }}
-
-  /* スマホ向けタイトル画像サイズ調整 */
-  @media (max-width: 800px) {{
-    .title-img {{ max-width: 60%; }}
-  }}
-
-  .start-text {{
-    font-size: 40px; color: white; text-shadow: 2px 2px #000;
-    font-weight: bold; opacity: 0;
-  }}
+  .title-img {{ max-width: 22%; height: auto; margin-bottom: 20px; opacity: 0; }}
+  @media (max-width: 800px) {{ .title-img {{ max-width: 60%; }} }}
+  .start-text {{ font-size: 40px; color: white; text-shadow: 2px 2px #000; font-weight: bold; opacity: 0; }}
   
-  /* アニメーション定義 */
-  @keyframes slideUpFade {{
-    0% {{ opacity: 0; transform: translateY(100px); }}
-    100% {{ opacity: 1; transform: translateY(0); }}
-  }}
-  @keyframes blinkFade {{
-    0% {{ opacity: 0; }}
-    100% {{ opacity: 1; }}
-  }}
-  @keyframes blinkRed {{
-    0% {{ color: red; }}
-    50% {{ color: white; }}
-    100% {{ color: red; }}
-  }}
+  @keyframes slideUpFade {{ 0% {{ opacity: 0; transform: translateY(100px); }} 100% {{ opacity: 1; transform: translateY(0); }} }}
+  @keyframes blinkFade {{ 0% {{ opacity: 0; }} 100% {{ opacity: 1; }} }}
+  @keyframes blinkRed {{ 0% {{ color: red; }} 50% {{ color: white; }} 100% {{ color: red; }} }}
 
   /* --- ゲームオーバー・ランキング画面 --- */
   #overlay {{ 
     position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); 
     background: rgba(0, 0, 0, 0.85); border: 4px solid white; border-radius: 10px;
     padding: 30px; text-align: center; color: white; display: none; width: 400px; 
-    max-width: 90%; 
-    z-index: 200; 
+    max-width: 90%; z-index: 200; 
   }}
+
+  /* ★修正: スマホ横画面（高さが低い）時はオーバーレイを縮小して全体を表示させる */
+  @media (max-height: 500px) {{
+      #overlay {{
+          padding: 10px;
+          transform: translate(-50%, -50%) scale(0.7); /* 全体を70%に縮小 */
+          width: 500px; /* 縮小分、ベース幅を広げる */
+      }}
+      #final-score-display {{ margin-bottom: 5px; font-size: 20px; }}
+      h2 {{ margin: 5px 0; font-size: 24px; }}
+      table {{ margin: 5px 0; font-size: 14px; }}
+      th, td {{ padding: 2px; }}
+      #input-section {{ margin-bottom: 10px; }}
+      #mobile-retry-btn {{ margin: 10px auto 5px auto; padding: 8px 20px; font-size: 18px; }}
+  }}
+
   h2 {{ margin-top: 0; color: yellow; text-shadow: 2px 2px #f00; }}
   
-  /* --- ランキングテーブル --- */
   table {{ width: 100%; border-collapse: collapse; margin: 15px 0; }}
   th, td {{ border-bottom: 1px solid #555; padding: 5px; text-align: left; }}
   th {{ color: #aaa; }}
   .rank-col {{ width: 40px; text-align: center; }}
   .score-col {{ text-align: right; color: #0f0; }}
   
-  /* --- 入力フォーム --- */
   #input-section {{ margin-bottom: 20px; display: none; }}
-  input[type="text"] {{ 
-    padding: 5px; font-size: 16px; width: 150px; text-align: center; 
-    user-select: text;
-    -webkit-user-select: text;
-  }}
+  input[type="text"] {{ padding: 5px; font-size: 16px; width: 150px; text-align: center; user-select: text; -webkit-user-select: text; }}
   button {{ padding: 5px 15px; font-size: 16px; cursor: pointer; background: #f00; color: white; border: none; font-weight: bold; }}
-  button:hover {{ background: #ff5555; }}
-  button:disabled {{ background: #555; cursor: not-allowed; }}
   
-  /* --- ローディング表示 --- */
-  #loading-msg {{ 
-      display: none; 
-      color: yellow; 
-      font-weight: bold; 
-      margin-top: 10px; 
-      animation: blink 1s infinite; 
+  #loading-msg {{ display: none; color: yellow; font-weight: bold; margin-top: 10px; animation: blink 1s infinite; }}
+  .restart-msg {{ margin-top: 20px; font-size: 14px; color: #ccc; }}
+
+  #mobile-retry-btn {{
+      display: none; margin: 25px auto 10px auto; padding: 15px 40px; font-size: 24px;
+      background: #00d2ff; border: 3px solid white; color: white; font-weight: bold;
+      border-radius: 50px; cursor: pointer; animation: blink 2s infinite;
+      box-shadow: 0 0 10px rgba(0, 210, 255, 0.8);
+  }}
+  
+  #auto-restart-msg {{
+      display: none; color: #00d2ff; margin-top: 20px; font-size: 18px; font-weight: bold; animation: blink 1s infinite;
   }}
 
-  .restart-msg {{ margin-top: 20px; font-size: 14px; color: #ccc; }}
+  /* --- 縦画面警告 --- */
+  #orientation-warning {{
+      display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+      background: rgba(0,0,0,0.95); z-index: 9999;
+      flex-direction: column; justify-content: center; align-items: center;
+      text-align: center; color: white;
+  }}
+  .rotate-icon {{ font-size: 60px; margin-bottom: 20px; }}
+  .rotate-msg {{ font-size: 24px; font-weight: bold; animation: blinkRed 1s infinite; padding: 20px; }}
 
   /* --- モバイルコントローラー --- */
   #mobile-controls {{
-    display: none;
-    position: absolute;
-    bottom: 0; /* 画面最下部 */
-    left: 0;
-    width: 100%;
-    height: 100%; 
-    max-height: 200px; 
-    z-index: 100;
-    pointer-events: none; 
-    justify-content: space-between; 
-    padding: 0 10px; /* 左右の余白 */
-    box-sizing: border-box;
-    align-items: flex-end;
-    padding-bottom: 20px; /* 下部の余白 */
+    display: none; position: absolute; bottom: 0; left: 0; width: 100%; height: 100%; max-height: 200px;
+    z-index: 100; pointer-events: none; justify-content: space-between; padding: 0 20px; box-sizing: border-box; align-items: flex-end; padding-bottom: 20px;
   }}
 
-  /* スマホ・タブレット（タッチデバイス）でのみ表示 */
   @media (hover: none) and (pointer: coarse) {{
     #mobile-controls {{ display: flex; }}
     .restart-msg {{ display: none; }}
     #mobile-retry-btn {{ display: block !important; }}
   }}
 
-  /* 左側の十字キーエリア */
-  .d-pad {{
-    pointer-events: auto;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    gap: 10px;
-    margin-bottom: 10px;
-    margin-left: 10px; /* 左端から少し離す */
+  /* ★修正: 左側ジョイスティック */
+  .joystick-area {{
+      pointer-events: auto;
+      width: 120px; height: 120px;
+      margin-bottom: 20px;
+      margin-left: 20px;
+      position: relative;
+      /* 少し半透明な背景でコントローラーっぽく */
+      background: rgba(255, 255, 255, 0.1);
+      border: 2px solid rgba(255, 255, 255, 0.3);
+      border-radius: 50%;
+      touch-action: none; /* 重要 */
   }}
   
-  .d-pad-row {{
-    display: flex;
-    gap: 15px;
+  .joystick-knob {{
+      width: 50px; height: 50px;
+      background: rgba(0, 210, 255, 0.8);
+      border-radius: 50%;
+      position: absolute;
+      top: 50%; left: 50%;
+      transform: translate(-50%, -50%);
+      box-shadow: 0 0 10px rgba(0, 210, 255, 0.5);
+      pointer-events: none; /* タッチイベントは親が受け取る */
   }}
 
-  /* 右側のジャンプボタンエリア */
+  /* 右側ジャンプボタン */
   .action-btn-area {{
     pointer-events: auto;
-    /* ★修正: アイコン干渉回避のため、右と下から十分な距離を取る */
-    margin-bottom: 40px; 
-    margin-right: 60px; 
+    margin-bottom: 40px; margin-right: 60px; 
   }}
 
   .touch-btn {{
-    width: 80px;
-    height: 80px;
-    border-radius: 50%;
-    background: rgba(255, 255, 255, 0.2);
-    border: 2px solid rgba(255, 255, 255, 0.6);
-    color: white;
-    font-size: 35px;
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    touch-action: manipulation;
-    user-select: none;
-    -webkit-user-select: none;
-    cursor: pointer;
-    text-shadow: 1px 1px 2px black;
+    width: 90px; height: 90px; border-radius: 50%; background: rgba(255, 255, 255, 0.2); border: 2px solid rgba(255, 255, 255, 0.6); color: white; font-size: 40px; display: flex; justify-content: center; align-items: center; touch-action: manipulation; user-select: none; -webkit-user-select: none; cursor: pointer; text-shadow: 1px 1px 2px black;
   }}
   .touch-btn:active {{ background: rgba(255, 255, 255, 0.5); }}
-  
-  #mobile-retry-btn {{
-      display: none;
-      margin: 25px auto 10px auto; 
-      padding: 15px 40px;
-      font-size: 24px;
-      background: #00d2ff;
-      border: 3px solid white;
-      color: white;
-      font-weight: bold;
-      border-radius: 50px;
-      cursor: pointer;
-      animation: blink 2s infinite;
-      box-shadow: 0 0 10px rgba(0, 210, 255, 0.8);
-  }}
-  
-  /* 自動リスタートメッセージ */
-  #auto-restart-msg {{
-      display: none;
-      color: #00d2ff;
-      margin-top: 20px;
-      font-size: 18px;
-      font-weight: bold;
-      animation: blink 1s infinite;
-  }}
-
-  /* --- 縦画面警告オーバーレイ --- */
-  #orientation-warning {{
-      display: none; /* デフォルト非表示 */
-      position: fixed;
-      top: 0; left: 0; width: 100%; height: 100%;
-      background: rgba(0,0,0,0.95);
-      z-index: 9999;
-      flex-direction: column;
-      justify-content: center;
-      align-items: center;
-      text-align: center;
-      color: white;
-  }}
-  .rotate-icon {{ font-size: 60px; margin-bottom: 20px; }}
-  .rotate-msg {{ 
-      font-size: 24px; font-weight: bold; 
-      animation: blinkRed 1s infinite; 
-      padding: 20px;
-  }}
 
 </style>
 </head>
 <body>
 
-<!-- 縦画面警告 -->
 <div id="orientation-warning">
     <div class="rotate-icon">📱⟲</div>
     <div class="rotate-msg">Please Rotate Your Device<br>画面を横にしてください</div>
     <div style="margin-top:20px; color:#aaa;">Game Paused</div>
 </div>
 
-<!-- UI表示 -->
 <div id="ui-layer">
     Score: <span id="score">0</span> | Level: <span id="level">1</span><br>
     Life: <span id="hearts">❤️❤️❤️</span>
     <div id="status-msg"></div>
 </div>
 
-<!-- キャンバス -->
 <canvas id="gameCanvas" width="800" height="400"></canvas>
 
-<!-- タイトル画面 -->
 <div id="title-screen">
     <img id="title-img" class="title-img" src="https://raw.githubusercontent.com/m-fukuda-blip/game/main/game_title.png" alt="GAME TITLE">
     <div id="start-text" class="start-text">GAME START!</div>
 </div>
 
-<!-- オーバーレイ（ランキング＆ゲームオーバー） -->
 <div id="overlay">
     <h2 id="overlay-title">GAME OVER</h2>
     <div id="final-score-display" style="font-size: 24px; margin-bottom: 15px;"></div>
-    
-    <!-- 名前入力エリア -->
     <div id="input-section">
         <p style="color: cyan;">🎉 NEW RECORD! 🎉</p>
         <input type="text" id="player-name" placeholder="Enter Name" maxlength="8">
         <button id="submit-btn" onclick="submitScore()">Save</button>
         <div id="loading-msg">⏳ Saving to Global Ranking...</div>
     </div>
-
-    <!-- ランキング表 -->
     <div id="ranking-section">
         <div id="rank-loading" style="color:#aaa; display:none;">Loading Ranking...</div>
-        <table>
-            <thead><tr><th class="rank-col">#</th><th>Name</th><th class="score-col">Score</th></tr></thead>
-            <tbody id="ranking-body"></tbody>
-        </table>
+        <table><thead><tr><th class="rank-col">#</th><th>Name</th><th class="score-col">Score</th></tr></thead><tbody id="ranking-body"></tbody></table>
     </div>
-
     <div class="restart-msg">Press 'R' to Restart</div>
-    <!-- 自動リスタートメッセージ -->
+    <button id="mobile-retry-btn" onclick="resetGame()">🔄 RETRY</button>
     <div id="auto-restart-msg"></div>
 </div>
 
-<!-- ★修正: モバイルコントローラー配置 (横持ち用) -->
+<!-- ★修正: モバイルコントローラー (スティック + ボタン) -->
 <div id="mobile-controls">
-    <!-- 左側: 方向キー + しゃがみ -->
-    <div class="d-pad">
-        <div class="d-pad-row">
-            <div id="btn-left" class="touch-btn">◀</div>
-            <div id="btn-right" class="touch-btn">▶</div>
-        </div>
-        <!-- しゃがみは左右キーの下 -->
-        <div id="btn-down" class="touch-btn">▼</div>
+    <!-- 左側: アナログスティック -->
+    <div id="joystick-area" class="joystick-area">
+        <div id="joystick-knob" class="joystick-knob"></div>
     </div>
     
-    <!-- 右側: ジャンプ (右端) -->
+    <!-- 右側: ジャンプ -->
     <div class="action-btn-area">
-        <!-- ★修正: アイコン干渉回避のため配置CSSを調整済み -->
         <div id="btn-jump" class="touch-btn" style="background: rgba(255, 200, 0, 0.4); width:100px; height:100px; font-size:50px;">▲</div>
     </div>
 </div>
 
 <script>
-  // 右クリックメニュー防止
   document.addEventListener('contextmenu', event => event.preventDefault());
-
   const canvas = document.getElementById('gameCanvas');
   const ctx = canvas.getContext('2d');
-  
-  // スマホ判定
   const isMobile = ('ontouchstart' in window) || (navigator.maxTouchPoints > 0) || (window.innerWidth < 800);
-
-  // ポーズフラグ
   let isPaused = false;
   const orientationWarning = document.getElementById('orientation-warning');
 
-  // 画面向きチェック & Canvasサイズ調整
   function checkOrientationAndResize() {{
       if (isMobile) {{
-          // 縦長の場合
-          if (window.innerHeight > window.innerWidth) {{
-              isPaused = true;
-              orientationWarning.style.display = 'flex';
-          }} else {{
-              isPaused = false;
-              orientationWarning.style.display = 'none';
-              // 横画面なら幅を画面いっぱいに
-              canvas.width = window.innerWidth - 20;
-          }}
-      }} else {{
-          // PC等は固定幅
-          canvas.width = 800;
-      }}
+          if (window.innerHeight > window.innerWidth) {{ isPaused = true; orientationWarning.style.display = 'flex'; }} 
+          else {{ isPaused = false; orientationWarning.style.display = 'none'; canvas.width = window.innerWidth - 20; }}
+      }} else {{ canvas.width = 800; }}
   }}
-
-  // リサイズイベント監視
   window.addEventListener('resize', checkOrientationAndResize);
-  // 初期チェック
   checkOrientationAndResize();
 
   const scoreEl = document.getElementById('score');
   const levelEl = document.getElementById('level');
   const heartsEl = document.getElementById('hearts');
   const statusMsgEl = document.getElementById('status-msg');
-  
   const overlay = document.getElementById('overlay');
   const inputSection = document.getElementById('input-section');
   const rankingBody = document.getElementById('ranking-body');
@@ -396,14 +275,100 @@ game_html = f"""
   const loadingMsg = document.getElementById('loading-msg');
   const rankLoading = document.getElementById('rank-loading');
   const autoRestartMsg = document.getElementById('auto-restart-msg');
-
   const titleScreen = document.getElementById('title-screen');
   const titleImg = document.getElementById('title-img');
   const startText = document.getElementById('start-text');
 
   // ==========================================
-  // ★ 画面シェイク機能
+  // ★ ジョイスティック制御ロジック
   // ==========================================
+  const joystickArea = document.getElementById('joystick-area');
+  const joystickKnob = document.getElementById('joystick-knob');
+  let stickTouchId = null;
+
+  if (joystickArea) {{
+      const maxRadius = 40; // スティックが動ける最大半径
+      const center = {{ x: 60, y: 60 }}; // エリアの中心 (120/2)
+
+      joystickArea.addEventListener('touchstart', (e) => {{
+          e.preventDefault();
+          // 最初のタッチを採用
+          const touch = e.changedTouches[0];
+          stickTouchId = touch.identifier;
+          startBGM();
+          updateStick(touch);
+      }}, {{passive: false}});
+
+      joystickArea.addEventListener('touchmove', (e) => {{
+          e.preventDefault();
+          for (let i = 0; i < e.changedTouches.length; i++) {{
+              if (e.changedTouches[i].identifier === stickTouchId) {{
+                  updateStick(e.changedTouches[i]);
+                  break;
+              }}
+          }}
+      }}, {{passive: false}});
+
+      const endStick = (e) => {{
+          e.preventDefault();
+          for (let i = 0; i < e.changedTouches.length; i++) {{
+              if (e.changedTouches[i].identifier === stickTouchId) {{
+                  stickTouchId = null;
+                  // ノブを中心に
+                  joystickKnob.style.transform = `translate(-50%, -50%) translate(0px, 0px)`;
+                  // 入力解除
+                  keys.left = false;
+                  keys.right = false;
+                  keys.down = false;
+                  break;
+              }}
+          }}
+      }};
+      joystickArea.addEventListener('touchend', endStick);
+      joystickArea.addEventListener('touchcancel', endStick);
+
+      function updateStick(touch) {{
+          const rect = joystickArea.getBoundingClientRect();
+          let x = touch.clientX - rect.left - center.x;
+          let y = touch.clientY - rect.top - center.y;
+          
+          // 距離制限
+          const distance = Math.sqrt(x*x + y*y);
+          if (distance > maxRadius) {{
+              const angle = Math.atan2(y, x);
+              x = Math.cos(angle) * maxRadius;
+              y = Math.sin(angle) * maxRadius;
+          }}
+
+          // ノブ移動
+          joystickKnob.style.transform = `translate(-50%, -50%) translate(${{x}}px, ${{y}}px)`;
+
+          // 入力判定（デッドゾーンあり）
+          keys.left = false; keys.right = false; keys.down = false;
+          
+          if (distance > 10) {{ // 少し倒したら反応
+              // X方向が支配的か、Y方向が支配的か
+              if (Math.abs(x) > Math.abs(y)) {{
+                  if (x > 0) keys.right = true;
+                  else keys.left = true;
+              }} else {{
+                  if (y > 0) keys.down = true;
+                  // 上入力は使わない
+              }}
+          }}
+      }}
+  }}
+  
+  // ジャンプボタン
+  const btnJump = document.getElementById('btn-jump');
+  if(btnJump) {{
+      btnJump.addEventListener('touchstart', (e) => {{
+          e.preventDefault();
+          doJump(); 
+      }});
+  }}
+
+  // ... (以下、ゲームロジックは変更なし)
   let screenShake = {{ x: 0, y: 0, duration: 0, intensity: 0 }};
   function addShake(intensity, duration) {{ screenShake.intensity = intensity; screenShake.duration = duration; }}
   function updateShake() {{
@@ -414,9 +379,6 @@ game_html = f"""
       }} else {{ screenShake.x = 0; screenShake.y = 0; }}
   }}
 
-  // ==========================================
-  // ★ パーティクルシステム
-  // ==========================================
   let particles = [];
   function spawnParticles(x, y, color, count = 8) {{
       for (let i = 0; i < count; i++) {{
@@ -427,14 +389,10 @@ game_html = f"""
       for (let i = 0; i < particles.length; i++) {{
           let p = particles[i];
           p.x += p.vx; p.y += p.vy; p.vy += 0.2; p.life--; p.size *= 0.95;
-          // 描画はdraw関数内で行う
           if (p.life <= 0 || p.size < 0.5) {{ particles.splice(i, 1); i--; }}
       }}
   }}
 
-  // ==========================================
-  // BGM設定
-  // ==========================================
   let audioCtx, isBgmPlaying = false, bgmTimeout = null, activeOscillators = [];
   const BASE_BPM = 130, BASE_BEAT_TIME = 60 / BASE_BPM;
   const melody = [5,5,6,5,3,-1,3,5, 5,5,6,5,3,-1,3,2, 5,5,6,5,8,8,7,6, 6,5,3,3,-1,5,-1,-1];
@@ -469,9 +427,6 @@ game_html = f"""
       const now = audioCtx.currentTime; osc.frequency.setValueAtTime(800, now); osc.frequency.exponentialRampToValueAtTime(50, now + 0.8); gain.gain.setValueAtTime(0.3, now); gain.gain.exponentialRampToValueAtTime(0.01, now + 0.8); osc.start(now); osc.stop(now + 0.8);
   }}
 
-  // ==========================================
-  // 画像読み込み
-  // ==========================================
   function loadResized(src, w, h) {{
       const wrapper = {{ img: null, ready: false, error: false }};
       const img = new Image(); img.crossOrigin = "Anonymous"; img.src = src;
@@ -510,28 +465,19 @@ game_html = f"""
   const mountainImgWrapper = loadResized("https://raw.githubusercontent.com/m-fukuda-blip/game/main/mountains.png", 3000, 200);
   const buildingImgWrapper = loadResized("https://raw.githubusercontent.com/m-fukuda-blip/game/main/buildings.png", 3000, 200);
 
-  // ゲーム変数
   const GRAVITY = 0.6, FRICTION = 0.8, BASE_GROUND_Y = 360;  
   let score = 0, level = 1, gameSpeed = 1.0, hp = 3, gameOver = false, isTitle = true; 
   let frameCount = 0, nextEnemySpawn = 0, nextItemSpawn = 0;
   let facingRight = true, isInvincible = false, invincibleTimer = 0, terrainSegments = [];
   let superMode = false, superModeTimer = 0, slowMode = false, slowModeTimer = 0;
   let floatingTexts = [], autoRestartTimer = null;
-  
-  let cameraX = 0;
-  let lastGeneratedX = 0;
-  
-  let platforms = [];
-  let checkpoints = [];
-  let nextCheckpointDist = 800 * 10; 
+  let cameraX = 0, lastGeneratedX = 0;
+  let platforms = [], checkpoints = [], nextCheckpointDist = 800 * 10; 
 
   const player = {{ 
-      x: 200, y: 0, width: 60, height: 60, 
-      speed: 7, 
-      dx: 0, dy: 0, 
+      x: 200, y: 0, width: 60, height: 60, speed: 7, dx: 0, dy: 0, 
       jumping: false, jumpCount: 0, maxJump: 2,
-      state: 'idle', animIndex: 0, animTimer: 0, 
-      animSpeedIdle: 15, animSpeedRun: 8, idlePingPong: 1, combo: 0 
+      state: 'idle', animIndex: 0, animTimer: 0, animSpeedIdle: 15, animSpeedRun: 8, idlePingPong: 1, combo: 0 
   }};
   
   let enemies = [], items = [], clouds = [];
@@ -606,15 +552,6 @@ game_html = f"""
       }}
   }}
 
-  const btnLeft = document.getElementById('btn-left');
-  const btnRight = document.getElementById('btn-right');
-  const btnDown = document.getElementById('btn-down');
-  const btnJump = document.getElementById('btn-jump');
-  document.addEventListener('touchstart', function(e) {{ if (e.target.classList.contains('touch-btn')) e.preventDefault(); }}, {{ passive: false }});
-  if(btnLeft) {{ btnLeft.addEventListener('touchstart', (e) => {{ keys.left = true; facingRight = false; startBGM(); }}); btnLeft.addEventListener('touchend', (e) => {{ keys.left = false; }}); }}
-  if(btnRight) {{ btnRight.addEventListener('touchstart', (e) => {{ keys.right = true; facingRight = true; startBGM(); }}); btnRight.addEventListener('touchend', (e) => {{ keys.right = false; }}); }}
-  if(btnDown) {{ btnDown.addEventListener('touchstart', (e) => {{ keys.down = true; startBGM(); }}); btnDown.addEventListener('touchend', (e) => {{ keys.down = false; }}); }}
-  if(btnJump) {{ btnJump.addEventListener('touchstart', (e) => {{ doJump(); }}); }}
   document.addEventListener('keydown', (e) => {{
     if (document.activeElement === nameInput) {{ if (e.key === 'Enter' && !submitBtn.disabled) submitScore(); return; }}
     if (player.state === 'dead' && e.code !== 'KeyR') return;
@@ -625,148 +562,76 @@ game_html = f"""
   }});
   document.addEventListener('keyup', (e) => {{ if (e.code === 'KeyD') keys.right = false; if (e.code === 'KeyA') keys.left = false; if (e.code === 'KeyS') keys.down = false; }});
 
-  // ★ 横スクロール用の地形生成ロジック（無限生成）
   function updateTerrain() {{
       const deleteThreshold = cameraX - 200;
-      for (let i = 0; i < terrainSegments.length; i++) {{
-          if (terrainSegments[i].x + terrainSegments[i].width < deleteThreshold) {{ terrainSegments.splice(i, 1); i--; }}
-      }}
-      for (let i = 0; i < platforms.length; i++) {{
-          if (platforms[i].x + platforms[i].width < deleteThreshold) {{ platforms.splice(i, 1); i--; }}
-      }}
-      for (let i = 0; i < checkpoints.length; i++) {{
-          if (checkpoints[i].x + 100 < deleteThreshold) {{ checkpoints.splice(i, 1); i--; }}
-      }}
-      
-      // ★修正: 横持ち時に先まで生成しておく (400px -> 1000px)
+      for (let i = 0; i < terrainSegments.length; i++) {{ if (terrainSegments[i].x + terrainSegments[i].width < deleteThreshold) {{ terrainSegments.splice(i, 1); i--; }} }}
+      for (let i = 0; i < platforms.length; i++) {{ if (platforms[i].x + platforms[i].width < deleteThreshold) {{ platforms.splice(i, 1); i--; }} }}
+      for (let i = 0; i < checkpoints.length; i++) {{ if (checkpoints[i].x + 100 < deleteThreshold) {{ checkpoints.splice(i, 1); i--; }} }}
       const generateThreshold = cameraX + canvas.width + 400;
-      while (lastGeneratedX < generateThreshold) {{
-          generateNextSegment();
-      }}
-      
-      if (lastGeneratedX > nextCheckpointDist) {{
-          checkpoints.push({{ x: nextCheckpointDist, passed: false }});
-          nextCheckpointDist += 800 * 10;
-      }}
+      while (lastGeneratedX < generateThreshold) {{ generateNextSegment(); }}
+      if (lastGeneratedX > nextCheckpointDist) {{ checkpoints.push({{ x: nextCheckpointDist, passed: false }}); nextCheckpointDist += 800 * 10; }}
   }}
 
   function generateNextSegment() {{
-      if (terrainSegments.length === 0) {{
-          terrainSegments.push({{ x: 0, width: 800, topY: BASE_GROUND_Y, level: 0 }});
-          lastGeneratedX = 800;
-          return;
-      }}
-
+      if (terrainSegments.length === 0) {{ terrainSegments.push({{ x: 0, width: 800, topY: BASE_GROUND_Y, level: 0 }}); lastGeneratedX = 800; return; }}
       let prevSeg = terrainSegments[terrainSegments.length - 1];
       let gapWidth = 0;
       if (Math.random() < 0.25 && prevSeg.width > 100) gapWidth = Math.random() * 100 + 80; 
-
-      let newX = lastGeneratedX + gapWidth;
-      let width = Math.random() * 200 + 150; 
-      
+      let newX = lastGeneratedX + gapWidth; let width = Math.random() * 200 + 150; 
       const SEG_HEIGHTS = [BASE_GROUND_Y, BASE_GROUND_Y - 50, BASE_GROUND_Y - 100];
       let prevLevel = prevSeg.level !== undefined ? prevSeg.level : 0;
       let delta = Math.floor(Math.random() * 3) - 1; 
       let newLevel = Math.min(2, Math.max(0, prevLevel + delta));
       let topY = SEG_HEIGHTS[newLevel];
-
       terrainSegments.push({{ x: newX, width: width, topY: topY, level: newLevel }});
       lastGeneratedX = newX + width;
 
       if (Math.random() < 0.3) {{
-          let pW = player.width * (3 + Math.random() * 2); 
-          let pX = newX + Math.random() * (width - pW); 
-          let pY = topY - 100 - Math.random() * 80; 
+          let pW = player.width * (3 + Math.random() * 2); let pX = newX + Math.random() * (width - pW); let pY = topY - 100 - Math.random() * 80; 
           if (pY < 100) pY = 100;
           platforms.push({{ x: pX, y: pY, width: pW, height: 20 }});
           if (Math.random() < 0.5) spawnEnemyOnTerrain(pX, pW, pY);
       }}
-
-      if (gapWidth === 0 && width > 100) {{
-           // ★修正1: 出現頻度2倍 (0.5->1.0, 0.4->0.8)
-           if (Math.random() < 1.0) spawnEnemyOnTerrain(newX, width, topY);
-           if (Math.random() < 0.8) spawnItemOnTerrain(newX, width, topY);
-      }}
+      if (gapWidth === 0 && width > 100) {{ if (Math.random() < 1.0) spawnEnemyOnTerrain(newX, width, topY); if (Math.random() < 0.8) spawnItemOnTerrain(newX, width, topY); }}
   }}
   
   function spawnEnemyOnTerrain(tx, tw, ty) {{
-      let type = Math.random() < 0.5 ? 'ground' : 'flying';
-      let speedBase = 2 + level * 0.05; 
-      let ex = tx + Math.random() * (tw - 60) + 30; 
-      let ey = ty - 52; 
-
-      if (type === 'flying') ey = ty - 100 - Math.random() * 100; 
-      if (score >= 2000 && Math.random() < 0.3) {{ type = 'hard'; speedBase += 2; }}
-      
+      let type = Math.random() < 0.5 ? 'ground' : 'flying'; let speedBase = 2 + level * 0.05; let ex = tx + Math.random() * (tw - 60) + 30; let ey = ty - 52; 
+      if (type === 'flying') ey = ty - 100 - Math.random() * 100; if (score >= 2000 && Math.random() < 0.3) {{ type = 'hard'; speedBase += 2; }}
       enemies.push({{ x: ex, y: ey, width: 52, height: 52, dx: -speedBase, dy: 0, type: type, angle: 0, animIndex: 0, animTimer: 0 }});
   }}
 
   function spawnItemOnTerrain(tx, tw, ty) {{
-      const r = Math.random();
-      let type = 'coin';
+      const r = Math.random(); let type = 'coin';
       if (r < 0.005) type = 'star'; else if (r < 0.035) type = 'trap'; else if (r < 0.045) type = 'heal'; else type = 'coin';
-
-      let ix = tx + Math.random() * (tw - 50) + 25;
-      let iy = ty - 45 - Math.random() * 100; 
-      
+      let ix = tx + Math.random() * (tw - 50) + 25; let iy = ty - 45 - Math.random() * 100; 
       items.push({{ x: ix, y: iy, width: 45, height: 45, dx: 0, isCollected: false, animIndex: 0, animTimer: 0, type: type }}); 
   }}
   
   function getGroundYUnderPlayer() {{
-    let groundY = null;
-    let centerX = player.x + player.width / 2;
-    for (let seg of terrainSegments) {{ 
-        if (centerX > seg.x && centerX < seg.x + seg.width) {{ 
-            if (groundY === null || seg.topY < groundY) groundY = seg.topY; 
-        }} 
-    }}
-    for (let p of platforms) {{
-        if (centerX > p.x && centerX < p.x + p.width) {{
-             if (player.y + player.height <= p.y + 20) {{
-                 if (groundY === null || p.y < groundY) groundY = p.y;
-             }}
-        }}
-    }}
+    let groundY = null; let centerX = player.x + player.width / 2;
+    for (let seg of terrainSegments) {{ if (centerX > seg.x && centerX < seg.x + seg.width) {{ if (groundY === null || seg.topY < groundY) groundY = seg.topY; }} }}
+    for (let p of platforms) {{ if (centerX > p.x && centerX < p.x + p.width) {{ if (player.y + player.height <= p.y + 20) {{ if (groundY === null || p.y < groundY) groundY = p.y; }} }} }}
     return groundY;
   }}
-  
   function getGroundYAtX(x) {{
-    let groundY = null;
-    for (let seg of terrainSegments) {{ if (x >= seg.x && x <= seg.x + seg.width) {{ if (groundY === null || seg.topY < groundY) groundY = seg.topY; }} }}
-    return groundY;
+    let groundY = null; for (let seg of terrainSegments) {{ if (x >= seg.x && x <= seg.x + seg.width) {{ if (groundY === null || seg.topY < groundY) groundY = seg.topY; }} }} return groundY;
   }}
 
-  function initClouds() {{
-    clouds = [];
-    for(let i=0; i<8; i++) {{ clouds.push({{ x: Math.random() * 1200, y: Math.random() * 200, speed: Math.random() * 0.3 + 0.1, imgIndex: Math.floor(Math.random() * 4) }}); }}
-  }}
-
+  function initClouds() {{ clouds = []; for(let i=0; i<8; i++) {{ clouds.push({{ x: Math.random() * 1200, y: Math.random() * 200, speed: Math.random() * 0.3 + 0.1, imgIndex: Math.floor(Math.random() * 4) }}); }} }}
   function updateClouds() {{
-    for(let c of clouds) {{
-        c.x -= c.speed;
-        if(c.x < 0.2 * cameraX - 200) {{ c.x = 0.2 * cameraX + canvas.width + 200 + Math.random() * 200; c.y = Math.random() * 150; c.imgIndex = Math.floor(Math.random() * 4); }}
-    }}
+    for(let c of clouds) {{ c.x -= c.speed; if(c.x < 0.2 * cameraX - 200) {{ c.x = 0.2 * cameraX + canvas.width + 200 + Math.random() * 200; c.y = Math.random() * 150; c.imgIndex = Math.floor(Math.random() * 4); }} }}
   }}
-
   function updateLevel() {{ const newLevel = Math.floor(score / 500) + 1; if (newLevel > level) {{ level = newLevel; gameSpeed = 1.0 + (level * 0.05); levelEl.innerText = level; if(hp < 3) {{ hp++; updateHearts(); }} }} }}
-
   function updateHearts() {{ let h = ""; for(let i=0; i<hp; i++) h += "❤️"; heartsEl.innerText = h; }}
 
   function resetGame() {{
-    if (autoRestartTimer) clearInterval(autoRestartTimer);
-    autoRestartMsg.style.display = 'none';
-
-    player.x = 200; player.y = 0; player.dx = 0; player.dy = 0;
-    cameraX = 0; lastGeneratedX = 0;
-    
-    player.state = 'idle'; player.animIndex = 0; player.animTimer = 0; player.idlePingPong = 1;
-    player.combo = 0; player.jumpCount = 0;
+    if (autoRestartTimer) clearInterval(autoRestartTimer); autoRestartMsg.style.display = 'none';
+    player.x = 200; player.y = 0; player.dx = 0; player.dy = 0; cameraX = 0; lastGeneratedX = 0;
+    player.state = 'idle'; player.animIndex = 0; player.animTimer = 0; player.idlePingPong = 1; player.combo = 0; player.jumpCount = 0;
     score = 0; level = 1; gameSpeed = 1.0; hp = 3;
-    enemies = []; items = []; floatingTexts = []; particles = []; terrainSegments = []; 
-    platforms = []; checkpoints = []; nextCheckpointDist = 800 * 10; // リセット
-    
-    gameOver = false; frameCount = 0;
-    isInvincible = false; nextEnemySpawn = 0; nextItemSpawn = 0;
+    enemies = []; items = []; floatingTexts = []; particles = []; terrainSegments = []; platforms = []; checkpoints = []; nextCheckpointDist = 800 * 10;
+    gameOver = false; frameCount = 0; isInvincible = false; nextEnemySpawn = 0; nextItemSpawn = 0;
     scoreEl.innerText = score; levelEl.innerText = level;
     superMode = false; superModeTimer = 0; slowMode = false; slowModeTimer = 0; statusMsgEl.innerText = "";
 
@@ -775,24 +640,14 @@ game_html = f"""
     startText.style.opacity = '0'; startText.style.animation = 'none';
     setTimeout(() => {{ startText.style.animation = 'blinkFade 0.5s forwards'; setTimeout(() => {{ titleScreen.style.display = 'none'; isTitle = false; }}, 1000); }}, 2000);
 
-    updateHearts(); initClouds(); 
-    checkOrientationAndResize(); // 初回チェックでCanvasサイズ確定後に地形生成
-    updateTerrain(); 
-    
-    const startGround = getGroundYUnderPlayer(); 
-    const gY = startGround !== null ? startGround : BASE_GROUND_Y; 
-    player.y = gY - player.height;
-    overlay.style.display = 'none';
+    updateHearts(); initClouds(); checkOrientationAndResize(); updateTerrain(); 
+    const startGround = getGroundYUnderPlayer(); const gY = startGround !== null ? startGround : BASE_GROUND_Y; 
+    player.y = gY - player.height; overlay.style.display = 'none';
   }}
 
   function updatePlayerAnimation() {{
     const prevState = player.state;
-    if (hp <= 0) player.state = 'dead';
-    else if (player.jumping) player.state = 'jump';
-    else if (keys.down) player.state = 'squat';
-    else if (keys.right || keys.left) player.state = 'run';
-    else player.state = 'idle';
-
+    if (hp <= 0) player.state = 'dead'; else if (player.jumping) player.state = 'jump'; else if (keys.down) player.state = 'squat'; else if (keys.right || keys.left) player.state = 'run'; else player.state = 'idle';
     if (player.state !== prevState) {{ player.animTimer = 0; player.animIndex = 0; player.idlePingPong = 1; }}
     player.animTimer++;
     switch (player.state) {{
@@ -805,9 +660,7 @@ game_html = f"""
   }}
 
   function update() {{
-    // ★追加: ポーズ中は更新ストップ
     if (isPaused) return;
-
     if (gameOver && player.state !== 'dead') return; if (player.state === 'dead') return;
     if (isTitle) {{ updateClouds(); return; }}
 
@@ -824,85 +677,46 @@ game_html = f"""
     if (slowMode) currentSpeed *= 0.5;
 
     if (player.state !== 'dead') {{
-        // しゃがみ中は移動不可
         if (player.state !== 'squat') {{
-            if (keys.right) player.dx = currentSpeed;
-            else if (keys.left) player.dx = -currentSpeed;
-            else player.dx *= FRICTION;
-        }} else {{
-            player.dx *= FRICTION;
-        }}
-
-        let nextX = player.x + player.dx;
-        let checkX = player.dx > 0 ? nextX + player.width : nextX;
+            if (keys.right) player.dx = currentSpeed; else if (keys.left) player.dx = -currentSpeed; else player.dx *= FRICTION;
+        }} else {{ player.dx *= FRICTION; }}
+        let nextX = player.x + player.dx; let checkX = player.dx > 0 ? nextX + player.width : nextX;
         let nextGroundY = getGroundYAtX(checkX); 
-        
-        // 段差判定
-        if (nextGroundY !== null) {{
-            if (player.y + player.height > nextGroundY + 5) {{ player.dx = 0; }}
-        }}
-        
-        // 左端制限 (カメラより左には行けない)
-        if (nextX < cameraX) {{
-            nextX = cameraX;
-            player.dx = 0;
-        }}
+        if (nextGroundY !== null) {{ if (player.y + player.height > nextGroundY + 5) player.dx = 0; }}
+        if (nextX < cameraX) {{ nextX = cameraX; player.dx = 0; }}
     }}
 
     player.x += player.dx; player.y += player.dy; player.dy += GRAVITY;
-    
     let targetCameraX = player.x - 300; 
     if (targetCameraX < 0) targetCameraX = 0;
-    if (targetCameraX > cameraX) {{
-        cameraX = targetCameraX; 
-    }}
+    if (targetCameraX > cameraX) cameraX = targetCameraX; 
     
     updateTerrain();
-
     const groundY = getGroundYUnderPlayer();
     if (groundY !== null) {{ 
-        if (player.y + player.height >= groundY && player.dy >= 0) {{ 
-            player.y = groundY - player.height; 
-            player.dy = 0; 
-            player.jumping = false; 
-            player.combo = 0; 
-            player.jumpCount = 0; 
-        }} 
+        if (player.y + player.height >= groundY && player.dy >= 0) {{ player.y = groundY - player.height; player.dy = 0; player.jumping = false; player.combo = 0; player.jumpCount = 0; }} 
     }} else {{ 
-        if (player.y > canvas.height) {{ 
-            if (isNaN(player.y)) player.y = 0; 
-            if (!gameOver) {{ hp = 0; updateHearts(); playSound('hit'); handleGameOver(); }} 
-        }} 
+        if (player.y > canvas.height) {{ if (isNaN(player.y)) player.y = 0; if (!gameOver) {{ hp = 0; updateHearts(); playSound('hit'); handleGameOver(); }} }} 
     }}
     
     updatePlayerAnimation();
     if (gameOver) return;
 
-    // パーティクル更新
-    updateAndDrawParticles(); // 計算のみ
-
-    // フローティングテキスト更新
-    for (let i = 0; i < floatingTexts.length; i++) {{
-        let ft = floatingTexts[i];
-        ft.y += ft.dy; ft.life--;
-        if (ft.life <= 0) {{ floatingTexts.splice(i, 1); i--; }}
-    }}
+    updateAndDrawParticles();
+    for (let i = 0; i < floatingTexts.length; i++) {{ let ft = floatingTexts[i]; ft.y += ft.dy; ft.life--; if (ft.life <= 0) {{ floatingTexts.splice(i, 1); i--; }} }}
 
     let playerHitH = player.height; let playerHitY = player.y;
     if (player.state === 'squat') {{ playerHitH = player.height / 2; playerHitY = player.y + player.height / 2; }}
 
-    // ★ アイテム更新 (削除判定はカメラ基準)
     for (let i = 0; i < items.length; i++) {{ 
         let item = items[i]; 
-        
-        // 画面左外に出たら消す
         if (item.x + item.width < cameraX - 100) {{ items.splice(i, 1); i--; continue; }}
-
         if (item.isCollected) {{
             if (item.type === 'coin') {{ item.animTimer++; if (item.animTimer > 5) {{ item.animIndex++; item.animTimer = 0; }} if (item.animIndex >= 3) {{ items.splice(i, 1); i--; }} }} 
             else {{ item.animTimer++; if (item.animTimer > 30) {{ items.splice(i, 1); i--; }} }}
         }} else {{
-            // アイテムは動かない(dx=0)
+            item.x += item.dx;
+            if (item.x + item.width < cameraX - 100) {{ items.splice(i, 1); i--; continue; }} 
             if (player.x < item.x + item.width && player.x + player.width > item.x && playerHitY < item.y + item.height && playerHitY + playerHitH > item.y) {{
                 item.isCollected = true; item.animIndex = 0; item.animTimer = 0;
                 if (item.type === 'coin') {{ score += 50; playSound('coin'); spawnParticles(item.x, item.y, 'gold', 5); }} 
@@ -921,7 +735,6 @@ game_html = f"""
         e.x += e.dx;
         e.animTimer++; if (e.animTimer > 10) {{ e.animIndex = (e.animIndex + 1) % 2; e.animTimer = 0; }}
         if (e.type === 'flying') {{ e.angle += 0.1; e.y += Math.sin(e.angle) * 2; }} 
-
         if (player.x < e.x + e.width && player.x + player.width > e.x && playerHitY < e.y + e.height && playerHitY + playerHitH > e.y) {{ 
             const isStomp = (player.dy > 0 && player.y + player.height < e.y + e.height * 0.6) || stompedThisFrame || superMode;
             if (isStomp) {{ 
@@ -939,20 +752,14 @@ game_html = f"""
             }} 
         }} 
     }}
-  }}
 
-  // ★追加: パララックス背景描画関数
-  function drawParallaxLayer(imgWrapper, scrollFactor, y) {{
-      if (!imgWrapper || !imgWrapper.ready) return;
-      const img = imgWrapper.img;
-      const w = img.width;
-      // カメラ位置に応じたオフセット（ループ）
-      let x = -(cameraX * scrollFactor) % w;
-      if (x > 0) x -= w;
-      while (x < canvas.width) {{
-          ctx.drawImage(img, x, y);
-          x += w;
-      }}
+    for (let cp of checkpoints) {{
+        if (!cp.passed && player.x > cp.x) {{
+            cp.passed = true; score += 1500; scoreEl.innerText = score; playSound('gate');
+            spawnParticles(player.x, player.y, 'cyan', 15);
+            floatingTexts.push({{ x: player.x, y: player.y - 40, text: "CHECKPOINT! +1500", life: 90, dy: -0.5 }});
+        }}
+    }}
   }}
 
   function drawObj(wrapper, x, y, w, h, fallbackColor) {{
@@ -962,45 +769,24 @@ game_html = f"""
 
   function draw() {{
     ctx.clearRect(0, 0, canvas.width, canvas.height);
-    
-    let skyColor;
-    if (score < 1000) skyColor = '#B0E0E6'; else if (score < 3000) skyColor = '#FFDAB9'; else if (score < 5000) skyColor = '#483D8B'; else skyColor = '#6A5ACD'; 
+    let skyColor; if (score < 1000) skyColor = '#B0E0E6'; else if (score < 3000) skyColor = '#FFDAB9'; else if (score < 5000) skyColor = '#483D8B'; else skyColor = '#6A5ACD'; 
     ctx.fillStyle = skyColor; ctx.fillRect(0, 0, canvas.width, canvas.height);
     
-    // ★追加: ポーズ中の暗転処理
-    if (isPaused) {{
-        // 背景等は描画せず、警告レイヤーに任せるか、
-        // ここで描画して暗くするかだが、orientation-warningが前面に出るのでここでは通常描画してよい。
-        // ただ無駄な描画を省くためリターンしてもよいが、
-        // 画面遷移の違和感をなくすため描画し続ける。
-    }}
-    
-    ctx.save();
-    ctx.translate(screenShake.x, screenShake.y);
-
+    ctx.save(); ctx.translate(screenShake.x, screenShake.y);
     drawParallaxLayer(mountainImgWrapper, 0.1, canvas.height - 250); 
-    
     for(let c of clouds) {{
-        let wrapper = cloudImgWrappers[c.imgIndex];
-        let parallaxX = c.x - cameraX * 0.2; 
-        if (wrapper && wrapper.ready && wrapper.img) {{ ctx.drawImage(wrapper.img, parallaxX, c.y); }} 
+        let wrapper = cloudImgWrappers[c.imgIndex]; let parallaxX = c.x - cameraX * 0.2; 
+        if (wrapper && wrapper.ready && wrapper.img) ctx.drawImage(wrapper.img, parallaxX, c.y); 
         else {{ ctx.fillStyle = 'rgba(255, 255, 255, 0.5)'; ctx.beginPath(); ctx.arc(parallaxX, c.y, 30, 0, Math.PI*2); ctx.fill(); }}
     }}
-
     drawParallaxLayer(buildingImgWrapper, 0.4, canvas.height - 220); 
 
     ctx.translate(-cameraX, 0); 
-
     for (let seg of terrainSegments) {{ ctx.fillStyle = '#654321'; ctx.fillRect(seg.x, seg.topY, seg.width, canvas.height - seg.topY); ctx.fillStyle = '#228B22'; ctx.fillRect(seg.x, seg.topY, seg.width, 10); }}
-    
-    ctx.fillStyle = '#999'; ctx.strokeStyle = '#555';
-    for (let p of platforms) {{ ctx.fillRect(p.x, p.y, p.width, p.height); ctx.strokeRect(p.x, p.y, p.width, p.height); }}
-
+    ctx.fillStyle = '#999'; ctx.strokeStyle = '#555'; for (let p of platforms) {{ ctx.fillRect(p.x, p.y, p.width, p.height); ctx.strokeRect(p.x, p.y, p.width, p.height); }}
     ctx.strokeStyle = 'yellow'; ctx.lineWidth = 5;
     for (let cp of checkpoints) {{
-        ctx.beginPath(); ctx.moveTo(cp.x, BASE_GROUND_Y); ctx.lineTo(cp.x, BASE_GROUND_Y - 150);
-        ctx.arc(cp.x + 40, BASE_GROUND_Y - 150, 40, Math.PI, 0); ctx.lineTo(cp.x + 80, BASE_GROUND_Y);
-        ctx.stroke();
+        ctx.beginPath(); ctx.moveTo(cp.x, BASE_GROUND_Y); ctx.lineTo(cp.x, BASE_GROUND_Y - 150); ctx.arc(cp.x + 40, BASE_GROUND_Y - 150, 40, Math.PI, 0); ctx.lineTo(cp.x + 80, BASE_GROUND_Y); ctx.stroke();
         if (!cp.passed) {{ ctx.fillStyle = 'rgba(0, 255, 255, 0.3)'; ctx.fill(); }}
     }}
 
@@ -1009,58 +795,44 @@ game_html = f"""
             if (item.type === 'coin') {{ let effectWrapper = itemEffectAnim[item.animIndex]; if(effectWrapper) drawObj(effectWrapper, item.x, item.y, item.width, item.height, 'yellow'); }}
             else {{
                 ctx.save(); if (Math.floor(Date.now() / 50) % 2 === 0) ctx.globalAlpha = 0.2; else ctx.globalAlpha = 0.8;
-                if (item.type === 'heal') drawObj(capsuleImgWrapper, item.x, item.y, item.width, item.height, 'pink');
-                else if (item.type === 'star') drawObj(mutekiImgWrapper, item.x, item.y, item.width, item.height, 'yellow');
-                else if (item.type === 'trap') drawObj(jyamaImgWrapper, item.x, item.y, item.width, item.height, 'purple');
+                if (item.type === 'heal') drawObj(capsuleImgWrapper, item.x, item.y, item.width, item.height, 'pink'); else if (item.type === 'star') drawObj(mutekiImgWrapper, item.x, item.y, item.width, item.height, 'yellow'); else if (item.type === 'trap') drawObj(jyamaImgWrapper, item.x, item.y, item.width, item.height, 'purple');
                 ctx.restore();
             }}
         }} else {{
-            if (item.type === 'coin') drawObj(itemImgWrapper, item.x, item.y, item.width, item.height, 'gold');
-            else if (item.type === 'heal') drawObj(capsuleImgWrapper, item.x, item.y, item.width, item.height, 'pink');
-            else if (item.type === 'star') drawObj(mutekiImgWrapper, item.x, item.y, item.width, item.height, 'yellow');
-            else if (item.type === 'trap') drawObj(jyamaImgWrapper, item.x, item.y, item.width, item.height, 'purple');
+            if (item.type === 'coin') drawObj(itemImgWrapper, item.x, item.y, item.width, item.height, 'gold'); else if (item.type === 'heal') drawObj(capsuleImgWrapper, item.x, item.y, item.width, item.height, 'pink'); else if (item.type === 'star') drawObj(mutekiImgWrapper, item.x, item.y, item.width, item.height, 'yellow'); else if (item.type === 'trap') drawObj(jyamaImgWrapper, item.x, item.y, item.width, item.height, 'purple');
         }}
     }}
 
     for (let e of enemies) {{ 
-        let animWrapper = null;
-        if (e.type === 'hard') {{ animWrapper = enemy2Anim[e.animIndex] || enemy2Anim[0]; drawObj(animWrapper, e.x, e.y, e.width, e.height, 'purple'); }} 
-        else {{ animWrapper = enemyAnim[e.animIndex] || enemyAnim[0]; drawObj(animWrapper, e.x, e.y, e.width, e.height, 'red'); }}
+        let animWrapper = null; if (e.type === 'hard') {{ animWrapper = enemy2Anim[e.animIndex] || enemy2Anim[0]; drawObj(animWrapper, e.x, e.y, e.width, e.height, 'purple'); }} else {{ animWrapper = enemyAnim[e.animIndex] || enemyAnim[0]; drawObj(animWrapper, e.x, e.y, e.width, e.height, 'red'); }}
     }}
 
     ctx.save();
-    if (superMode) {{ if (Math.floor(Date.now() / 50) % 2 === 0) {{ ctx.globalAlpha = 0.8; ctx.filter = 'brightness(1.5) drop-shadow(0 0 5px gold)'; }} }} 
-    else if (slowMode) {{ ctx.filter = 'hue-rotate(270deg)'; }} 
-    else if (isInvincible) {{ if (Math.floor(Date.now() / 100) % 2 === 0) ctx.globalAlpha = 0.5; }}
+    if (superMode) {{ if (Math.floor(Date.now() / 50) % 2 === 0) {{ ctx.globalAlpha = 0.8; ctx.filter = 'brightness(1.5) drop-shadow(0 0 5px gold)'; }} }} else if (slowMode) {{ ctx.filter = 'hue-rotate(270deg)'; }} else if (isInvincible) {{ if (Math.floor(Date.now() / 100) % 2 === 0) ctx.globalAlpha = 0.5; }}
     
     let currentWrapper = null;
-    if (player.state === 'dead') currentWrapper = playerAnim.dead;
-    else if (player.state === 'squat') currentWrapper = playerAnim.squat; 
-    else if (playerAnim[player.state] && playerAnim[player.state][player.animIndex]) currentWrapper = playerAnim[player.state][player.animIndex];
+    if (player.state === 'dead') currentWrapper = playerAnim.dead; else if (player.state === 'squat') currentWrapper = playerAnim.squat; else if (playerAnim[player.state] && playerAnim[player.state][player.animIndex]) currentWrapper = playerAnim[player.state][player.animIndex];
 
     if (!isNaN(player.x) && !isNaN(player.y)) {{
-        if (!facingRight) {{ ctx.translate(player.x + player.width, player.y); ctx.scale(-1, 1); drawObj(currentWrapper, 0, 0, player.width, player.height, 'blue'); }} 
-        else {{ drawObj(currentWrapper, player.x, player.y, player.width, player.height, 'blue'); }}
+        if (!facingRight) {{ ctx.translate(player.x + player.width, player.y); ctx.scale(-1, 1); drawObj(currentWrapper, 0, 0, player.width, player.height, 'blue'); }} else {{ drawObj(currentWrapper, player.x, player.y, player.width, player.height, 'blue'); }}
     }}
     ctx.restore();
 
-    for(let p of particles) {{
-        ctx.fillStyle = p.color; ctx.globalAlpha = Math.min(p.life / 20, 1.0); ctx.fillRect(p.x, p.y, p.size, p.size); ctx.globalAlpha = 1.0;
-    }}
-
+    for(let p of particles) {{ ctx.fillStyle = p.color; ctx.globalAlpha = Math.min(p.life / 20, 1.0); ctx.fillRect(p.x, p.y, p.size, p.size); ctx.globalAlpha = 1.0; }}
     ctx.fillStyle = "yellow"; ctx.font = "bold 20px Courier New"; ctx.strokeStyle = "black"; ctx.lineWidth = 3;
     for (let ft of floatingTexts) {{ ctx.strokeText(ft.text, ft.x, ft.y); ctx.fillText(ft.text, ft.x, ft.y); }}
     ctx.restore();
   }}
 
-  function loop() {{
-      // ポーズ中はループを回し続けるが、更新はしない（drawは念のため呼んで画面を保持）
-      if (!isPaused) {{
-          update();
-      }}
-      draw();
-      requestAnimationFrame(loop);
+  // ★追加: drawParallaxLayer関数定義漏れ修正
+  function drawParallaxLayer(imgWrapper, scrollFactor, y) {{
+      if (!imgWrapper || !imgWrapper.ready) return;
+      const img = imgWrapper.img; const w = img.width;
+      let x = -(cameraX * scrollFactor) % w; if (x > 0) x -= w;
+      while (x < canvas.width) {{ ctx.drawImage(img, x, y); x += w; }}
   }}
+
+  function loop() {{ if (!isPaused) update(); draw(); requestAnimationFrame(loop); }}
 
   resetGame(); loop(); 
 </script>
