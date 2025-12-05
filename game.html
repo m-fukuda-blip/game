@@ -338,6 +338,10 @@
   const enemyAnim = [], enemy2Anim = [];
   for(let i=1; i<=2; i++) { enemyAnim.push(loadResized(`https://raw.githubusercontent.com/m-fukuda-blip/game/main/EnemyAction0${i}.png`, 52, 52)); }
   for(let i=1; i<=2; i++) { enemy2Anim.push(loadResized(`https://raw.githubusercontent.com/m-fukuda-blip/game/main/Enemy2Action0${i}.png`, 52, 52)); }
+  // ★Enemy3の画像をロード
+  const enemy3Anim = [];
+  for(let i=1; i<=2; i++) { enemy3Anim.push(loadResized(`https://raw.githubusercontent.com/m-fukuda-blip/game/main/enemy3action${i}.png`, 52, 52)); }
+
   const itemImgWrapper = loadResized("https://raw.githubusercontent.com/m-fukuda-blip/game/main/coin.png", 45, 45);
   const capsuleImgWrapper = loadResized("https://raw.githubusercontent.com/m-fukuda-blip/game/main/capsule.png", 45, 45);
   const mutekiImgWrapper = loadResized("https://raw.githubusercontent.com/m-fukuda-blip/game/main/muteki.png", 45, 45);
@@ -492,6 +496,22 @@
       enemies.push({ x: ex, y: ey, width: 52, height: 52, dx: -speedBase, dy: 0, type: type, angle: 0, animIndex: 0, animTimer: 0 });
   }
 
+  // ★Enemy3生成ヘルパー
+  function spawnEnemy3() {
+      let ex = cameraX - 100; // 画面左外から
+      let gY = getGroundYAtX(ex);
+      if (gY === null) gY = BASE_GROUND_Y; // 穴の上ならデフォルト位置
+      
+      enemies.push({ 
+          x: ex, 
+          y: gY - 52, 
+          width: 52, height: 52, 
+          dx: player.speed + 3, // プレイヤーより速く
+          type: 'enemy3', 
+          animIndex: 0, animTimer: 0 
+      });
+  }
+
   function spawnItemOnTerrain(tx, tw, ty) {
       const r = Math.random(); let type = 'coin';
       // ★王冠の出現条件: スコア10000以上かつ低確率(1%)
@@ -585,6 +605,11 @@
         items.push({ x: player.x + 150, y: player.y - 100, width: 45, height: 45, dx: 0, isCollected: false, animIndex: 0, animTimer: 0, type: 'crown' });
     }
 
+    // ★Enemy3のスポーン判定
+    if (score >= 10000 && Math.random() < 0.005) { // 低確率で左から出現
+        spawnEnemy3();
+    }
+
     let statusText = "";
     if (superMode) { superModeTimer--; statusText += "🌟SUPER MODE! "; if (superModeTimer <= 0) superMode = false; }
     // ★王冠ボーナス処理
@@ -676,7 +701,23 @@
     let stompedThisFrame = false; 
     for (let i = 0; i < enemies.length; i++) { 
         let e = enemies[i]; 
-        if (e.x + e.width < cameraX - 100) { enemies.splice(i, 1); i--; continue; }
+        
+        // ★Enemy3は画面右端に出たら消す
+        if (e.type === 'enemy3') {
+            if (e.x > cameraX + canvas.width + 100) { enemies.splice(i, 1); i--; continue; }
+            
+            // 地面に沿って動くロジック
+            let centerX = e.x + e.width / 2;
+            let gY = getGroundYAtX(centerX);
+            if (gY !== null) {
+                e.y = gY - e.height; // 地面があればスナップ
+            }
+            // 穴(gY === null)なら高さを維持(浮く)
+        } else {
+            // 通常の敵は左端で消す
+            if (e.x + e.width < cameraX - 100) { enemies.splice(i, 1); i--; continue; }
+        }
+
         e.x += e.dx;
         e.animTimer++; if (e.animTimer > 10) { e.animIndex = (e.animIndex + 1) % 2; e.animTimer = 0; }
         if (e.type === 'flying') { e.angle += 0.1; e.y += Math.sin(e.angle) * 2; } 
@@ -729,7 +770,14 @@
 
   function draw() {
     ctx.clearRect(0, 0, canvas.width, canvas.height);
-    let skyColor; if (score < 1000) skyColor = '#B0E0E6'; else if (score < 3000) skyColor = '#FFDAB9'; else if (score < 5000) skyColor = '#483D8B'; else skyColor = '#6A5ACD'; 
+    let skyColor; 
+    // ★スコア10000以上で背景を赤く
+    if (score >= 10000) skyColor = '#8B0000';
+    else if (score < 1000) skyColor = '#B0E0E6'; 
+    else if (score < 3000) skyColor = '#FFDAB9'; 
+    else if (score < 5000) skyColor = '#483D8B'; 
+    else skyColor = '#6A5ACD'; 
+    
     ctx.fillStyle = skyColor; ctx.fillRect(0, 0, canvas.width, canvas.height);
      
     ctx.save(); ctx.translate(screenShake.x, screenShake.y);
@@ -773,7 +821,18 @@
     }
 
     for (let e of enemies) { 
-        let animWrapper = null; if (e.type === 'hard') { animWrapper = enemy2Anim[e.animIndex] || enemy2Anim[0]; drawObj(animWrapper, e.x, e.y, e.width, e.height, 'purple'); } else { animWrapper = enemyAnim[e.animIndex] || enemyAnim[0]; drawObj(animWrapper, e.x, e.y, e.width, e.height, 'red'); }
+        let animWrapper = null; 
+        if (e.type === 'enemy3') {
+            // ★Enemy3の描画
+            animWrapper = enemy3Anim[e.animIndex] || enemy3Anim[0];
+            drawObj(animWrapper, e.x, e.y, e.width, e.height, 'red');
+        } else if (e.type === 'hard') { 
+            animWrapper = enemy2Anim[e.animIndex] || enemy2Anim[0]; 
+            drawObj(animWrapper, e.x, e.y, e.width, e.height, 'purple'); 
+        } else { 
+            animWrapper = enemyAnim[e.animIndex] || enemyAnim[0]; 
+            drawObj(animWrapper, e.x, e.y, e.width, e.height, 'red'); 
+        }
     }
 
     ctx.save();
