@@ -6,7 +6,7 @@ st.set_page_config(page_title="Action Game with Ranking & Animation", layout="wi
 # タイトル画像を表示
 st.image("https://raw.githubusercontent.com/m-fukuda-blip/game/main/gametitlefix.png", use_column_width=True)
 
-st.caption("機能：❤️ライフ / 🆙レベル / ☁️背景変化 / 🔊音 / 🏆ランク / 🏃‍♂️アニメ / 🎵BGM / ✨アイテム / 🧗‍♂️段差 / 💥コンボ / 🫨シェイク / 📏サイズ / 🦘2段ジャンプ / ✨撃破演出 / ⬇️しゃがみ / ⏩横スクロール / 🧱空中足場 / ⛩️ゲート")
+st.caption("機能：❤️ライフ / 🆙レベル / ☁️背景変化 / 🔊音 / 🏆ランク / 🏃‍♂️アニメ / 🎵BGM / ✨アイテム / 🧗‍♂️段差 / 💥コンボ / 🫨シェイク / 📏サイズ / 🦘2段ジャンプ / ✨撃破演出 / ⬇️しゃがみ / ⏩横スクロール / 🧱空中足場 / ⛩️ゲート / 🗻パララックス背景")
 st.write("操作方法: **W** ジャンプ(2回可) / **A** 左移動 / **D** 右移動 / **S** しゃがみ / **R** リセット / **F** 全画面")
 
 # ==========================================
@@ -378,6 +378,12 @@ game_html = f"""
   const cloudImgWrappers = [];
   for(let i=1; i<=4; i++) cloudImgWrappers.push(loadResized(`https://raw.githubusercontent.com/m-fukuda-blip/game/main/cloud${{i}}.png`, 170, 120)); 
 
+  // ★追加: 背景画像（山、建物）
+  // ⚠️ご自身の画像URLに置き換えてください。とりあえずダミーURLを入れておきます。
+  // サイズは適当に大きめに指定（画面幅より大きく）
+  const mountainImgWrapper = loadResized("https://raw.githubusercontent.com/m-fukuda-blip/game/main/mountains.png", 1200, 400);
+  const buildingImgWrapper = loadResized("https://raw.githubusercontent.com/m-fukuda-blip/game/main/buildings.png", 1000, 300);
+
   // ゲーム変数
   const GRAVITY = 0.6, FRICTION = 0.8, BASE_GROUND_Y = 360;  
   let score = 0, level = 1, gameSpeed = 1.0, hp = 3, gameOver = false, isTitle = true; 
@@ -386,18 +392,16 @@ game_html = f"""
   let superMode = false, superModeTimer = 0, slowMode = false, slowModeTimer = 0;
   let floatingTexts = [], autoRestartTimer = null;
   
-  // ★ 追加: カメラ位置とワールド生成用変数
   let cameraX = 0;
   let lastGeneratedX = 0;
   
-  // ★ 追加: 空中コンクリートとチェックポイント
   let platforms = [];
   let checkpoints = [];
-  let nextCheckpointDist = 800 * 10; // 初回は画面10個分先
+  let nextCheckpointDist = 800 * 10; 
 
   const player = {{ 
       x: 200, y: 0, width: 60, height: 60, 
-      speed: 7, // ★修正1: 移動速度 7 に変更
+      speed: 7, 
       dx: 0, dy: 0, 
       jumping: false, jumpCount: 0, maxJump: 2,
       state: 'idle', animIndex: 0, animTimer: 0, 
@@ -556,6 +560,7 @@ game_html = f"""
       }}
 
       if (gapWidth === 0 && width > 100) {{
+           // ★修正1: 出現頻度2倍 (0.5->1.0, 0.4->0.8)
            if (Math.random() < 1.0) spawnEnemyOnTerrain(newX, width, topY);
            if (Math.random() < 0.8) spawnItemOnTerrain(newX, width, topY);
       }}
@@ -619,10 +624,23 @@ game_html = f"""
     for(let i=0; i<8; i++) {{ clouds.push({{ x: Math.random() * 1200, y: Math.random() * 200, speed: Math.random() * 0.3 + 0.1, imgIndex: Math.floor(Math.random() * 4) }}); }}
   }}
 
+  // ★ 雲の更新 (修正2: パララックス考慮の判定)
   function updateClouds() {{
     for(let c of clouds) {{
         c.x -= c.speed;
-        if(c.x < 0.2 * cameraX - 200) {{ c.x = 0.2 * cameraX + canvas.width + 200 + Math.random() * 200; c.y = Math.random() * 150; c.imgIndex = Math.floor(Math.random() * 4); }}
+        
+        // 描画位置(parallaxX) = c.x + cameraX * 0.8
+        // 画面左端(cameraX) より左(-200)に行ったら消える判定
+        // c.x + cameraX * 0.8 < cameraX - 200
+        // c.x < 0.2 * cameraX - 200
+        
+        if(c.x < 0.2 * cameraX - 200) {{ 
+            // 右端から再出現させる
+            // c.x = 0.2 * cameraX + 800 + random
+            c.x = 0.2 * cameraX + canvas.width + 200 + Math.random() * 200; 
+            c.y = Math.random() * 150; // Y座標もランダムに
+            c.imgIndex = Math.floor(Math.random() * 4);
+        }}
     }}
   }}
 
@@ -634,6 +652,7 @@ game_html = f"""
     if (autoRestartTimer) clearInterval(autoRestartTimer);
     autoRestartMsg.style.display = 'none';
 
+    // ★ 座標リセット
     player.x = 200; player.y = 0; player.dx = 0; player.dy = 0;
     cameraX = 0; lastGeneratedX = 0;
     
@@ -653,7 +672,7 @@ game_html = f"""
     startText.style.opacity = '0'; startText.style.animation = 'none';
     setTimeout(() => {{ startText.style.animation = 'blinkFade 0.5s forwards'; setTimeout(() => {{ titleScreen.style.display = 'none'; isTitle = false; }}, 1000); }}, 2000);
 
-    updateHearts(); initClouds(); updateTerrain(); 
+    updateHearts(); initClouds(); updateTerrain(); // 初回の地形生成
     const startGround = getGroundYUnderPlayer(); 
     const gY = startGround !== null ? startGround : BASE_GROUND_Y; 
     player.y = gY - player.height;
@@ -667,6 +686,7 @@ game_html = f"""
     else if (keys.down) player.state = 'squat';
     else if (keys.right || keys.left) player.state = 'run';
     else player.state = 'idle';
+
     if (player.state !== prevState) {{ player.animTimer = 0; player.animIndex = 0; player.idlePingPong = 1; }}
     player.animTimer++;
     switch (player.state) {{
@@ -695,6 +715,7 @@ game_html = f"""
     if (slowMode) currentSpeed *= 0.5;
 
     if (player.state !== 'dead') {{
+        // しゃがみ中は移動不可
         if (player.state !== 'squat') {{
             if (keys.right) player.dx = currentSpeed;
             else if (keys.left) player.dx = -currentSpeed;
@@ -707,10 +728,12 @@ game_html = f"""
         let checkX = player.dx > 0 ? nextX + player.width : nextX;
         let nextGroundY = getGroundYAtX(checkX); 
         
+        // 段差判定
         if (nextGroundY !== null) {{
             if (player.y + player.height > nextGroundY + 5) {{ player.dx = 0; }}
         }}
         
+        // 左端制限 (カメラより左には行けない)
         if (nextX < cameraX) {{
             nextX = cameraX;
             player.dx = 0;
@@ -719,14 +742,17 @@ game_html = f"""
 
     player.x += player.dx; player.y += player.dy; player.dy += GRAVITY;
     
-    let targetCameraX = player.x - 300; 
+    // ★ カメラ更新: プレイヤーが画面中央(400px)を超えたらカメラを追従させる
+    let targetCameraX = player.x - 300; // 画面左から300pxの位置にプレイヤーを置くイメージ
     if (targetCameraX < 0) targetCameraX = 0;
     if (targetCameraX > cameraX) {{
-        cameraX = targetCameraX; 
+        cameraX = targetCameraX; // 前進のみ（戻れない）
     }}
     
+    // ★ 地形無限生成 & 削除
     updateTerrain();
 
+    // 落下判定
     const groundY = getGroundYUnderPlayer();
     if (groundY !== null) {{ 
         if (player.y + player.height >= groundY && player.dy >= 0) {{ 
@@ -746,19 +772,10 @@ game_html = f"""
     updatePlayerAnimation();
     if (gameOver) return;
 
-    // ★ 修正3: ゲート通過判定
-    for (let cp of checkpoints) {{
-        if (!cp.passed && player.x > cp.x) {{
-            cp.passed = true;
-            score += 1500; scoreEl.innerText = score;
-            playSound('gate');
-            spawnParticles(player.x, player.y, 'cyan', 15);
-            floatingTexts.push({{ x: player.x, y: player.y - 40, text: "CHECKPOINT! +1500", life: 90, dy: -0.5 }});
-        }}
-    }}
+    // パーティクル更新
+    updateAndDrawParticles(); // 計算のみ
 
-    updateAndDrawParticles();
-
+    // フローティングテキスト更新
     for (let i = 0; i < floatingTexts.length; i++) {{
         let ft = floatingTexts[i]; ft.y += ft.dy; ft.life--; if (ft.life <= 0) {{ floatingTexts.splice(i, 1); i--; }}
     }}
@@ -766,15 +783,18 @@ game_html = f"""
     let playerHitH = player.height; let playerHitY = player.y;
     if (player.state === 'squat') {{ playerHitH = player.height / 2; playerHitY = player.y + player.height / 2; }}
 
+    // ★ アイテム更新 (削除判定はカメラ基準)
     for (let i = 0; i < items.length; i++) {{ 
         let item = items[i]; 
+        
+        // 画面左外に出たら消す
         if (item.x + item.width < cameraX - 100) {{ items.splice(i, 1); i--; continue; }}
+
         if (item.isCollected) {{
             if (item.type === 'coin') {{ item.animTimer++; if (item.animTimer > 5) {{ item.animIndex++; item.animTimer = 0; }} if (item.animIndex >= 3) {{ items.splice(i, 1); i--; }} }} 
             else {{ item.animTimer++; if (item.animTimer > 30) {{ items.splice(i, 1); i--; }} }}
         }} else {{
-            item.x += item.dx;
-            if (item.x + item.width < cameraX - 100) {{ items.splice(i, 1); i--; continue; }} 
+            // アイテムは動かない(dx=0)
             if (player.x < item.x + item.width && player.x + player.width > item.x && playerHitY < item.y + item.height && playerHitY + playerHitH > item.y) {{
                 item.isCollected = true; item.animIndex = 0; item.animTimer = 0;
                 if (item.type === 'coin') {{ score += 50; playSound('coin'); spawnParticles(item.x, item.y, 'gold', 5); }} 
@@ -786,11 +806,17 @@ game_html = f"""
         }}
     }}
 
+    // ★ 敵更新
     let stompedThisFrame = false; 
     for (let i = 0; i < enemies.length; i++) {{ 
         let e = enemies[i]; 
+        
+        // 画面左外に出たら消す
         if (e.x + e.width < cameraX - 100) {{ enemies.splice(i, 1); i--; continue; }}
+
+        // 敵の移動 (対地速度で動く)
         e.x += e.dx;
+        
         e.animTimer++; if (e.animTimer > 10) {{ e.animIndex = (e.animIndex + 1) % 2; e.animTimer = 0; }}
         if (e.type === 'flying') {{ e.angle += 0.1; e.y += Math.sin(e.angle) * 2; }} 
 
@@ -813,6 +839,23 @@ game_html = f"""
     }}
   }}
 
+  // ★追加: パララックス背景描画関数
+  function drawParallaxLayer(imgWrapper, scrollFactor, y) {{
+      if (!imgWrapper || !imgWrapper.ready) return;
+      const img = imgWrapper.img;
+      const w = img.width;
+      const h = img.height;
+      
+      // カメラ位置に応じたオフセット（ループ）
+      let x = -(cameraX * scrollFactor) % w;
+      
+      if (x > 0) x -= w;
+      while (x < canvas.width) {{
+          ctx.drawImage(img, x, y);
+          x += w;
+      }}
+  }}
+
   function drawObj(wrapper, x, y, w, h, fallbackColor) {{
     if (wrapper && wrapper.ready && wrapper.img) ctx.drawImage(wrapper.img, x, y, w, h);
     else {{ ctx.fillStyle = fallbackColor; ctx.fillRect(x, y, w, h); }}
@@ -825,15 +868,47 @@ game_html = f"""
     if (score < 1000) skyColor = '#87CEEB'; else if (score < 3000) skyColor = '#FF7F50'; else if (score < 5000) skyColor = '#191970'; else skyColor = '#4B0082'; 
     ctx.fillStyle = skyColor; ctx.fillRect(0, 0, canvas.width, canvas.height);
     
+    // ★追加: パララックス背景描画 (シェイク影響なし)
+    // シェイク前のコンテキスト保存は不要(背景なので揺らさない方が酔いにくいが、今回は全体揺らすならsave/restoreの外でやるべき)
+    // ここでは全体揺らす方針で、translateの後に描画する。
+    
     ctx.save();
-    ctx.translate(screenShake.x - cameraX, screenShake.y);
+    ctx.translate(screenShake.x, screenShake.y);
 
+    // 山 (遠景)
+    // y位置は画面下端基準で調整 (canvas.height - img.height) だが、少し沈めるなど調整
+    // ここでは loadResized で 400px 高さにしてるので 0 から描画でOKかも
+    drawParallaxLayer(mountainImgWrapper, 0.1, canvas.height - 300); // 少し上に
+
+    // 雲
+    // 雲は個別に動くオブジェクトとして実装されているのでそのまま
+    // ただし drawParallaxLayer ではなく個別の updateClouds で位置管理されている
+    // updateClouds で parallaxX を計算して描画しているロジックを維持
     for(let c of clouds) {{
         let wrapper = cloudImgWrappers[c.imgIndex];
-        let parallaxX = c.x + cameraX * 0.8; 
-        if (wrapper && wrapper.ready && wrapper.img) {{ ctx.drawImage(wrapper.img, parallaxX, c.y); }} 
-        else {{ ctx.fillStyle = 'rgba(255, 255, 255, 0.5)'; ctx.beginPath(); ctx.arc(parallaxX, c.y, 30, 0, Math.PI*2); ctx.fill(); }}
+        let parallaxX = c.x - cameraX * 0.2; // カメラの影響を弱める（パララックス）
+        // ループ処理はupdateCloudsでやっているが、描画位置だけ補正
+        // updateCloudsのロジック: c.x は絶対座標。
+        // 描画位置 = c.x - cameraX (通常)
+        // パララックス = c.x - cameraX * factor
+        // ここでは既存ロジックを生かすため、絶対座標からカメラ分を引く
+        // ただし雲は updateClouds でカメラ位置に応じて位置リセットされているので
+        // 単純に drawImage(img, c.x - cameraX, c.y) でよいが、
+        // 既存コードは `ctx.translate(-cameraX)` している前提で `ctx.drawImage(..., parallaxX, ...)` している
+        // ここでは `drawParallaxLayer` を使わず、既存の雲描画ロジックを維持・調整する
+        
+        // 手動でパララックス計算して描画
+        let drawX = c.x - cameraX * 0.2; 
+        // 画面内ループさせるためにモジュロ的な処理が必要だが、updateCloudsで管理されているのでそのまま
+        if (wrapper && wrapper.ready && wrapper.img) {{ ctx.drawImage(wrapper.img, drawX, c.y); }} 
+        else {{ ctx.fillStyle = 'rgba(255, 255, 255, 0.5)'; ctx.beginPath(); ctx.arc(drawX, c.y, 30, 0, Math.PI*2); ctx.fill(); }}
     }}
+
+    // 建物 (中景)
+    drawParallaxLayer(buildingImgWrapper, 0.4, canvas.height - 250); // 下揃え
+
+    // メインコンテンツ（カメラ追従）
+    ctx.translate(-cameraX, 0); // カメラ分ずらす
 
     for (let seg of terrainSegments) {{ ctx.fillStyle = '#654321'; ctx.fillRect(seg.x, seg.topY, seg.width, canvas.height - seg.topY); ctx.fillStyle = '#228B22'; ctx.fillRect(seg.x, seg.topY, seg.width, 10); }}
     
