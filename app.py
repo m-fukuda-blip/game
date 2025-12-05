@@ -128,7 +128,8 @@ game_html = f"""
     position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); 
     background: rgba(0, 0, 0, 0.85); border: 4px solid white; border-radius: 10px;
     padding: 30px; text-align: center; color: white; display: none; width: 400px; 
-    max-width: 90%; z-index: 200; 
+    max-width: 90%; 
+    z-index: 200; 
   }}
 
   @media (max-height: 500px) {{
@@ -381,24 +382,7 @@ game_html = f"""
       const gain = audioCtx.createGain(); gain.gain.setValueAtTime(0.15, time); gain.gain.exponentialRampToValueAtTime(0.01, time + duration);
       osc.connect(gain).connect(audioCtx.destination); osc.start(time); osc.stop(time + duration); activeOscillators.push(osc);
   }}
-  
-  // ★修正3: 速度計算ロジックの変更 (倍率計算)
-  function getSpeedMultiplier() {{
-      // スコア10000までは 1.0 -> 2.0 倍 (緩やか)
-      if (score < 10000) {{
-          return 1.0 + (score / 10000) * 1.0;
-      }}
-      // スコア10000以降は 2.0 + (1000ごとに2% = 0.02) 加算
-      // 上限は4.0倍
-      let base = 2.0;
-      let extra = ((score - 10000) / 1000) * 0.02;
-      return Math.min(4.0, base + extra);
-  }}
-
-  function getCurrentBeatTime() {{
-      return BASE_BEAT_TIME / getSpeedMultiplier();
-  }}
-
+  function getCurrentBeatTime() {{ let multiplier = 1.0 + Math.min(score, 10000) / 10000 * 3.0; return BASE_BEAT_TIME / multiplier; }}
   function playBGMLoop(){{
       if (!isBgmPlaying) return; 
       const start = audioCtx.currentTime; const currentBeat = getCurrentBeatTime(); 
@@ -582,12 +566,15 @@ game_html = f"""
           platforms.push({{ x: pX, y: pY, width: pW, height: 20 }});
           if (Math.random() < 0.5) spawnEnemyOnTerrain(pX, pW, pY);
       }}
-      if (gapWidth === 0 && width > 100) {{ if (Math.random() < 1.0) spawnEnemyOnTerrain(newX, width, topY); if (Math.random() < 0.8) spawnItemOnTerrain(newX, width, topY); }}
+      if (gapWidth === 0 && width > 100) {{ 
+           // ★修正: 出現頻度2倍
+           if (Math.random() < 1.0) spawnEnemyOnTerrain(newX, width, topY); 
+           if (Math.random() < 0.8) spawnItemOnTerrain(newX, width, topY); 
+      }}
   }}
   
   function spawnEnemyOnTerrain(tx, tw, ty) {{
       let type = Math.random() < 0.5 ? 'ground' : 'flying'; 
-      // ★修正3: 倍率を適用
       let speedBase = 2 + level * 0.05; 
       let ex = tx + Math.random() * (tw - 60) + 30; let ey = ty - 52; 
       if (type === 'flying') ey = ty - 100 - Math.random() * 100; if (score >= 2000 && Math.random() < 0.3) {{ type = 'hard'; speedBase += 2; }}
@@ -610,11 +597,6 @@ game_html = f"""
       let ey = BASE_GROUND_Y - 52;
       if (type === 'flying') ey = Math.random() * 200 + 50;
 
-      // dxをプラスに（右へ進む）
-      // 赤くするために type='hard' の画像を使うか、描画時に反転させるか。
-      // ここでは 'hard' タイプを流用し、描画時に色を変えるなどで対応（今回は既存の赤/紫を使用）
-      // 左から来る敵は特別感を出したいが、とりあえず既存リソースで。
-      
       enemies.push({{ 
           x: ex, y: ey, width: 52, height: 52, 
           dx: finalSpeed, dy: 0, 
@@ -645,7 +627,7 @@ game_html = f"""
   function updateClouds() {{
     for(let c of clouds) {{ c.x -= c.speed; if(c.x < 0.2 * cameraX - 200) {{ c.x = 0.2 * cameraX + canvas.width + 200 + Math.random() * 200; c.y = Math.random() * 150; c.imgIndex = Math.floor(Math.random() * 4); }} }}
   }}
-  function updateLevel() {{ const newLevel = Math.floor(score / 500) + 1; if (newLevel > level) {{ level = newLevel; levelEl.innerText = level; if(hp < 3) {{ hp++; updateHearts(); }} }} }}
+  function updateLevel() {{ const newLevel = Math.floor(score / 500) + 1; if (newLevel > level) {{ level = newLevel; gameSpeed = 1.0 + (level * 0.05); levelEl.innerText = level; if(hp < 3) {{ hp++; updateHearts(); }} }} }}
   function updateHearts() {{ let h = ""; for(let i=0; i<hp; i++) h += "❤️"; heartsEl.innerText = h; }}
 
   function resetGame() {{
@@ -711,7 +693,6 @@ game_html = f"""
     if (score >= 10000) {{
         if (frameCount >= nextReverseEnemySpawn) {{
             spawnReverseEnemy();
-            // 頻度は 200~400フレームごと (右側より少なめ)
             nextReverseEnemySpawn = frameCount + Math.random() * 200 + 200;
         }}
     }}
@@ -774,8 +755,6 @@ game_html = f"""
     let stompedThisFrame = false; 
     for (let i = 0; i < enemies.length; i++) {{ 
         let e = enemies[i]; 
-        // 画面外判定: 左敵は右へ行くので、右端消去も必要だが、まあ左端で消してもよい
-        // ここではカメラより大きく離れたら消す
         if (e.x + e.width < cameraX - 200 || e.x > cameraX + canvas.width + 200) {{ enemies.splice(i, 1); i--; continue; }}
         e.x += e.dx;
         e.animTimer++; if (e.animTimer > 10) {{ e.animIndex = (e.animIndex + 1) % 2; e.animTimer = 0; }}
@@ -823,12 +802,11 @@ game_html = f"""
   function draw() {{
     ctx.clearRect(0, 0, canvas.width, canvas.height);
     let skyColor; 
-    // ★修正2: 背景色の変更
     if (score < 1000) skyColor = '#B0E0E6'; 
     else if (score < 3000) skyColor = '#FFDAB9'; 
     else if (score < 5000) skyColor = '#483D8B'; 
     else if (score < 10000) skyColor = '#6A5ACD'; 
-    else skyColor = '#8B0000'; // 10000以上は赤(DarkRed)
+    else skyColor = '#8B0000'; // 10000以上は赤
 
     ctx.fillStyle = skyColor; ctx.fillRect(0, 0, canvas.width, canvas.height);
     
@@ -864,9 +842,7 @@ game_html = f"""
     }}
 
     for (let e of enemies) {{ 
-        let animWrapper = null; 
-        if (e.type === 'hard') {{ animWrapper = enemy2Anim[e.animIndex] || enemy2Anim[0]; drawObj(animWrapper, e.x, e.y, e.width, e.height, 'purple'); }} 
-        else {{ animWrapper = enemyAnim[e.animIndex] || enemyAnim[0]; drawObj(animWrapper, e.x, e.y, e.width, e.height, 'red'); }}
+        let animWrapper = null; if (e.type === 'hard') {{ animWrapper = enemy2Anim[e.animIndex] || enemy2Anim[0]; drawObj(animWrapper, e.x, e.y, e.width, e.height, 'purple'); }} else {{ animWrapper = enemyAnim[e.animIndex] || enemyAnim[0]; drawObj(animWrapper, e.x, e.y, e.width, e.height, 'red'); }}
     }}
 
     ctx.save();
