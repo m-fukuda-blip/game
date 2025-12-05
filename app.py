@@ -378,11 +378,9 @@ game_html = f"""
   const cloudImgWrappers = [];
   for(let i=1; i<=4; i++) cloudImgWrappers.push(loadResized(`https://raw.githubusercontent.com/m-fukuda-blip/game/main/cloud${{i}}.png`, 170, 120)); 
 
-  // ★追加: 背景画像（山、建物）
-  // ⚠️ご自身の画像URLに置き換えてください。とりあえずダミーURLを入れておきます。
-  // サイズは適当に大きめに指定（画面幅より大きく）
-  const mountainImgWrapper = loadResized("https://raw.githubusercontent.com/m-fukuda-blip/game/main/mountains.png", 1200, 400);
-  const buildingImgWrapper = loadResized("https://raw.githubusercontent.com/m-fukuda-blip/game/main/buildings.png", 1000, 300);
+  // ★修正: 背景画像（山、建物）サイズを 3000x200 に変更
+  const mountainImgWrapper = loadResized("https://raw.githubusercontent.com/m-fukuda-blip/game/main/mountains.png", 3000, 200);
+  const buildingImgWrapper = loadResized("https://raw.githubusercontent.com/m-fukuda-blip/game/main/buildings.png", 3000, 200);
 
   // ゲーム変数
   const GRAVITY = 0.6, FRICTION = 0.8, BASE_GROUND_Y = 360;  
@@ -864,9 +862,15 @@ game_html = f"""
   function draw() {{
     ctx.clearRect(0, 0, canvas.width, canvas.height);
     
+    // ★修正: 背景色の変更
     let skyColor;
-    if (score < 1000) skyColor = '#87CEEB'; else if (score < 3000) skyColor = '#FF7F50'; else if (score < 5000) skyColor = '#191970'; else skyColor = '#4B0082'; 
-    ctx.fillStyle = skyColor; ctx.fillRect(0, 0, canvas.width, canvas.height);
+    if (score < 1000) skyColor = '#B0E0E6';      // 昼 (PowderBlue)
+    else if (score < 3000) skyColor = '#FFDAB9'; // 夕方 (PeachPuff)
+    else if (score < 5000) skyColor = '#483D8B'; // 夜 (DarkSlateBlue)
+    else skyColor = '#6A5ACD';                   // 宇宙 (SlateBlue)
+
+    ctx.fillStyle = skyColor; 
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
     
     // ★追加: パララックス背景描画 (シェイク影響なし)
     // シェイク前のコンテキスト保存は不要(背景なので揺らさない方が酔いにくいが、今回は全体揺らすならsave/restoreの外でやるべき)
@@ -876,9 +880,9 @@ game_html = f"""
     ctx.translate(screenShake.x, screenShake.y);
 
     // 山 (遠景)
-    // y位置は画面下端基準で調整 (canvas.height - img.height) だが、少し沈めるなど調整
-    // ここでは loadResized で 400px 高さにしてるので 0 から描画でOKかも
-    drawParallaxLayer(mountainImgWrapper, 0.1, canvas.height - 300); // 少し上に
+    // 画像高さ200px -> 下揃えなら canvas.height - 200 = 200
+    // 少し浮かせるなら調整可
+    drawParallaxLayer(mountainImgWrapper, 0.1, canvas.height - 250); // 少し上
 
     // 雲
     // 雲は個別に動くオブジェクトとして実装されているのでそのまま
@@ -905,7 +909,7 @@ game_html = f"""
     }}
 
     // 建物 (中景)
-    drawParallaxLayer(buildingImgWrapper, 0.4, canvas.height - 250); // 下揃え
+    drawParallaxLayer(buildingImgWrapper, 0.4, canvas.height - 220); // 下揃え付近
 
     // メインコンテンツ（カメラ追従）
     ctx.translate(-cameraX, 0); // カメラ分ずらす
