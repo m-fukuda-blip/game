@@ -3,10 +3,32 @@ import streamlit.components.v1 as components
 
 st.set_page_config(page_title="Action Game with Ranking & Animation", layout="wide")
 
+# ★修正: Streamlitの余計なUI（ヘッダー、フッター、余白）を消して画面を固定するCSS
+st.markdown("""
+    <style>
+        #MainMenu {visibility: hidden;}
+        footer {visibility: hidden;}
+        header {visibility: hidden;}
+        .block-container {
+            padding-top: 0rem !important;
+            padding-bottom: 0rem !important;
+            padding-left: 0rem !important;
+            padding-right: 0rem !important;
+            margin: 0 !important;
+            max-width: 100% !important;
+        }
+        /* 親ページのスクロールも禁止 */
+        body {
+            overflow: hidden !important;
+            overscroll-behavior: none;
+        }
+    </style>
+""", unsafe_allow_html=True)
+
 # タイトル画像を表示
 st.image("https://raw.githubusercontent.com/m-fukuda-blip/game/main/gametitlefix.png", use_column_width=True)
 
-st.caption("機能：❤️ライフ / 🆙レベル / ☁️背景変化 / 🔊音 / 🏆ランク / 🏃‍♂️アニメ / 🎵BGM / ✨アイテム / 🧗‍♂️段差 / 💥コンボ / 🫨シェイク / 📏サイズ / 🦘2段ジャンプ / ✨撃破演出 / ⬇️しゃがみ / ⏩横スクロール / 🧱空中足場 / ⛩️ゲート / 🗻パララックス背景 / 📱スマホ横画面対応")
+st.caption("機能：❤️ライフ / 🆙レベル / ☁️背景変化 / 🔊音 / 🏆ランク / 🏃‍♂️アニメ / 🎵BGM / ✨アイテム / 🧗‍♂️段差 / 💥コンボ / 🫨シェイク / 📏サイズ / 🦘2段ジャンプ / ✨撃破演出 / ⬇️しゃがみ / ⏩横スクロール / 🧱空中足場 / ⛩️ゲート / 🗻パララックス背景 / 📱スマホ横画面固定")
 st.write("操作方法: **W** ジャンプ(2回可) / **A** 左移動 / **D** 右移動 / **S** しゃがみ / **R** リセット / **F** 全画面")
 
 # ==========================================
@@ -21,16 +43,26 @@ game_html = f"""
 <head>
 <style>
   /* --- 基本スタイル --- */
+  html, body {{
+    width: 100%;
+    height: 100%;
+    margin: 0;
+    padding: 0;
+  }}
+
   body {{ 
-    margin: 0; 
-    overflow: hidden; 
+    overflow: hidden; /* スクロール禁止 */
     background-color: #222; 
     color: white; 
     font-family: 'Courier New', sans-serif; 
     display: flex; 
     justify-content: center; 
     align-items: center; 
-    height: 80vh;
+    
+    /* ★修正: 画面固定を強化 */
+    position: fixed; 
+    top: 0; left: 0; right: 0; bottom: 0;
+    overscroll-behavior: none;
     
     /* スマホでの誤操作防止 */
     user-select: none;
@@ -126,21 +158,22 @@ game_html = f"""
 
   .restart-msg {{ margin-top: 20px; font-size: 14px; color: #ccc; }}
 
-  /* --- ★修正: モバイルコントローラー --- */
+  /* --- モバイルコントローラー --- */
   #mobile-controls {{
     display: none;
     position: absolute;
-    bottom: 20px;
+    bottom: 0; /* 画面最下部 */
     left: 0;
     width: 100%;
-    height: 100%; /* 画面全体を使って配置 */
-    max-height: 200px; /* 下部に寄せる */
+    height: 100%; 
+    max-height: 200px; 
     z-index: 100;
     pointer-events: none; 
-    justify-content: space-between; /* 左右に分離 */
-    padding: 0 30px; /* 画面端からの余白 */
+    justify-content: space-between; 
+    padding: 0 10px; /* 左右の余白 */
     box-sizing: border-box;
     align-items: flex-end;
+    padding-bottom: 20px; /* 下部の余白 */
   }}
 
   /* スマホ・タブレット（タッチデバイス）でのみ表示 */
@@ -158,6 +191,7 @@ game_html = f"""
     align-items: center;
     gap: 10px;
     margin-bottom: 10px;
+    margin-left: 10px; /* 左端から少し離す */
   }}
   
   .d-pad-row {{
@@ -168,8 +202,9 @@ game_html = f"""
   /* 右側のジャンプボタンエリア */
   .action-btn-area {{
     pointer-events: auto;
-    margin-bottom: 30px; /* 右下配置 */
-    margin-right: 10px;
+    /* ★修正: アイコン干渉回避のため、右と下から十分な距離を取る */
+    margin-bottom: 40px; 
+    margin-right: 60px; 
   }}
 
   .touch-btn {{
@@ -216,7 +251,7 @@ game_html = f"""
       animation: blink 1s infinite;
   }}
 
-  /* --- ★追加: 縦画面警告オーバーレイ --- */
+  /* --- 縦画面警告オーバーレイ --- */
   #orientation-warning {{
       display: none; /* デフォルト非表示 */
       position: fixed;
@@ -304,6 +339,7 @@ game_html = f"""
     
     <!-- 右側: ジャンプ (右端) -->
     <div class="action-btn-area">
+        <!-- ★修正: アイコン干渉回避のため配置CSSを調整済み -->
         <div id="btn-jump" class="touch-btn" style="background: rgba(255, 200, 0, 0.4); width:100px; height:100px; font-size:50px;">▲</div>
     </div>
 </div>
@@ -318,11 +354,11 @@ game_html = f"""
   // スマホ判定
   const isMobile = ('ontouchstart' in window) || (navigator.maxTouchPoints > 0) || (window.innerWidth < 800);
 
-  // ★追加: ポーズフラグ
+  // ポーズフラグ
   let isPaused = false;
   const orientationWarning = document.getElementById('orientation-warning');
 
-  // ★追加: 画面向きチェック & Canvasサイズ調整
+  // 画面向きチェック & Canvasサイズ調整
   function checkOrientationAndResize() {{
       if (isMobile) {{
           // 縦長の場合
@@ -647,6 +683,7 @@ game_html = f"""
       }}
 
       if (gapWidth === 0 && width > 100) {{
+           // ★修正1: 出現頻度2倍 (0.5->1.0, 0.4->0.8)
            if (Math.random() < 1.0) spawnEnemyOnTerrain(newX, width, topY);
            if (Math.random() < 0.8) spawnItemOnTerrain(newX, width, topY);
       }}
@@ -787,6 +824,7 @@ game_html = f"""
     if (slowMode) currentSpeed *= 0.5;
 
     if (player.state !== 'dead') {{
+        // しゃがみ中は移動不可
         if (player.state !== 'squat') {{
             if (keys.right) player.dx = currentSpeed;
             else if (keys.left) player.dx = -currentSpeed;
@@ -799,10 +837,12 @@ game_html = f"""
         let checkX = player.dx > 0 ? nextX + player.width : nextX;
         let nextGroundY = getGroundYAtX(checkX); 
         
+        // 段差判定
         if (nextGroundY !== null) {{
             if (player.y + player.height > nextGroundY + 5) {{ player.dx = 0; }}
         }}
         
+        // 左端制限 (カメラより左には行けない)
         if (nextX < cameraX) {{
             nextX = cameraX;
             player.dx = 0;
@@ -838,6 +878,10 @@ game_html = f"""
     updatePlayerAnimation();
     if (gameOver) return;
 
+    // パーティクル更新
+    updateAndDrawParticles(); // 計算のみ
+
+    // フローティングテキスト更新
     for (let i = 0; i < floatingTexts.length; i++) {{
         let ft = floatingTexts[i];
         ft.y += ft.dy; ft.life--;
@@ -847,16 +891,18 @@ game_html = f"""
     let playerHitH = player.height; let playerHitY = player.y;
     if (player.state === 'squat') {{ playerHitH = player.height / 2; playerHitY = player.y + player.height / 2; }}
 
+    // ★ アイテム更新 (削除判定はカメラ基準)
     for (let i = 0; i < items.length; i++) {{ 
         let item = items[i]; 
+        
+        // 画面左外に出たら消す
         if (item.x + item.width < cameraX - 100) {{ items.splice(i, 1); i--; continue; }}
 
         if (item.isCollected) {{
             if (item.type === 'coin') {{ item.animTimer++; if (item.animTimer > 5) {{ item.animIndex++; item.animTimer = 0; }} if (item.animIndex >= 3) {{ items.splice(i, 1); i--; }} }} 
             else {{ item.animTimer++; if (item.animTimer > 30) {{ items.splice(i, 1); i--; }} }}
         }} else {{
-            item.x += item.dx;
-            if (item.x + item.width < cameraX - 100) {{ items.splice(i, 1); i--; continue; }} 
+            // アイテムは動かない(dx=0)
             if (player.x < item.x + item.width && player.x + player.width > item.x && playerHitY < item.y + item.height && playerHitY + playerHitH > item.y) {{
                 item.isCollected = true; item.animIndex = 0; item.animTimer = 0;
                 if (item.type === 'coin') {{ score += 50; playSound('coin'); spawnParticles(item.x, item.y, 'gold', 5); }} 
@@ -892,15 +938,6 @@ game_html = f"""
                 }} 
             }} 
         }} 
-    }}
-    
-    // チェックポイント処理
-    for (let cp of checkpoints) {{
-        if (!cp.passed && player.x > cp.x) {{
-            cp.passed = true; score += 1500; scoreEl.innerText = score; playSound('gate');
-            spawnParticles(player.x, player.y, 'cyan', 15);
-            floatingTexts.push({{ x: player.x, y: player.y - 40, text: "CHECKPOINT! +1500", life: 90, dy: -0.5 }});
-        }}
     }}
   }}
 
