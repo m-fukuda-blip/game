@@ -151,8 +151,8 @@ game_html = f"""
   }}
 
   .touch-btn {{
-    width: 90px;
-    height: 90px;
+    width: 80px;
+    height: 80px;
     border-radius: 50%;
     background: rgba(255, 255, 255, 0.2);
     border: 2px solid rgba(255, 255, 255, 0.6);
@@ -230,6 +230,7 @@ game_html = f"""
 <div id="mobile-controls">
     <div class="control-group">
         <div id="btn-left" class="touch-btn">◀</div>
+        <!-- ★追加: しゃがみボタン -->
         <div id="btn-down" class="touch-btn">▼</div>
         <div id="btn-right" class="touch-btn">▶</div>
     </div>
@@ -297,9 +298,8 @@ game_html = f"""
       for (let i = 0; i < particles.length; i++) {{
           let p = particles[i];
           p.x += p.vx; p.y += p.vy; p.vy += 0.2; p.life--; p.size *= 0.95;
-          ctx.fillStyle = p.color; ctx.globalAlpha = Math.min(p.life / 20, 1.0); 
-          // ★修正: パーティクルもカメラ座標を考慮して描画するため、ここでは描画せず更新のみ
-          // (描画はdraw関数内でctx.translate後に行う)
+          // ★修正: コンテキスト操作はここでは行わず、座標更新のみにする
+          // ctx.fillStyle = p.color; ctx.globalAlpha = ... などの記述を削除
           if (p.life <= 0 || p.size < 0.5) {{ particles.splice(i, 1); i--; }}
       }}
   }}
