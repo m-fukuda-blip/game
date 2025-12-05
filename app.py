@@ -751,11 +751,13 @@ game_html = f"""
     nextItemSpawn = frameCount + Math.random() * 60 + 40; 
   }}
   
+  // ★ 雲の初期化
   function initClouds() {{
     clouds = [];
     for(let i=0; i<5; i++) {{ clouds.push({{ x: Math.random() * canvas.width, y: Math.random() * 150, speed: Math.random() * 0.5 + 0.2, imgIndex: Math.floor(Math.random() * 4) }}); }}
   }}
 
+  // ★ 雲の更新
   function updateClouds() {{
     for(let c of clouds) {{
         c.x -= c.speed;
@@ -763,7 +765,8 @@ game_html = f"""
     }}
   }}
 
-  function updateLevel() {{ const newLevel = Math.floor(score / 500) + 1; if (newLevel > level) {{ level = newLevel; gameSpeed = 1.0 + (level * 0.1); levelEl.innerText = level; if(hp < 3) {{ hp++; updateHearts(); }} }} }}
+  // ★ 修正2: 速度上昇率を半分に
+  function updateLevel() {{ const newLevel = Math.floor(score / 500) + 1; if (newLevel > level) {{ level = newLevel; gameSpeed = 1.0 + (level * 0.05); levelEl.innerText = level; if(hp < 3) {{ hp++; updateHearts(); }} }} }}
 
   function updateHearts() {{ let h = ""; for(let i=0; i<hp; i++) h += "❤️"; heartsEl.innerText = h; }}
 
