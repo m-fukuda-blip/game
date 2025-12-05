@@ -71,7 +71,7 @@ game_html = f"""
       /* デフォルトではサイズ指定なし（JS制御） */
   }}
   
-  /* ★修正: スマホ横持ち時のCanvas最適化 */
+  /* スマホ横持ち時のCanvas最適化 */
   @media (max-height: 500px) and (orientation: landscape) {{
       canvas {{
           height: 100vh;       /* 画面の高さいっぱいに */
@@ -93,11 +93,13 @@ game_html = f"""
       z-index: 5; 
   }}
 
-  /* ★修正: スマホ横持ち時のUI縮小 & 配置調整 */
+  /* ★修正: スマホ横持ち時のUI配置調整 */
   @media (max-height: 500px) and (orientation: landscape) {{
       #ui-layer {{
-          top: 60px; /* 操作キャラの少し上くらいまで下げる */
-          left: 40px; /* 左端からも少し離す */
+          /* キャラクターの頭(300px)の上20px(280px)を最下部にしたい */
+          /* UIの高さを約60pxと仮定して top を設定 */
+          top: 220px; 
+          left: 20px; /* 左端に寄せる */
           transform: scale(0.7); /* 70%に縮小 */
           transform-origin: top left;
           width: 100%;
@@ -268,28 +270,20 @@ game_html = f"""
   let isPaused = false;
   const orientationWarning = document.getElementById('orientation-warning');
 
-  // ★修正: 画面向きチェック & Canvasサイズ調整
   function checkOrientationAndResize() {{
       if (isMobile) {{
           if (window.innerHeight > window.innerWidth) {{
-              // 縦持ち：ポーズ
               isPaused = true;
               orientationWarning.style.display = 'flex';
-              // 念のためサイズ維持
               canvas.width = window.innerWidth - 20;
               canvas.height = 400;
           }} else {{
-              // 横持ち：ゲーム再開 & PC相当の解像度(800x400)に固定
-              // CSSの object-fit で画面にフィットさせる
               isPaused = false;
               orientationWarning.style.display = 'none';
-              
-              // ★ここが重要: 内部解像度をPCと同じにする
               canvas.width = 800;
               canvas.height = 400;
           }}
       }} else {{
-          // PC
           canvas.width = 800;
           canvas.height = 400;
       }}
@@ -314,7 +308,6 @@ game_html = f"""
   const titleImg = document.getElementById('title-img');
   const startText = document.getElementById('start-text');
 
-  // ... (ジョイスティック等のロジックは変更なし)
   const joystickArea = document.getElementById('joystick-area');
   const joystickKnob = document.getElementById('joystick-knob');
   let stickTouchId = null;
@@ -353,7 +346,6 @@ game_html = f"""
   const btnJump = document.getElementById('btn-jump');
   if(btnJump) {{ btnJump.addEventListener('touchstart', (e) => {{ e.preventDefault(); doJump(); }}); }}
 
-  // ... (以下ゲームロジック変更なし)
   let screenShake = {{ x: 0, y: 0, duration: 0, intensity: 0 }};
   function addShake(intensity, duration) {{ screenShake.intensity = intensity; screenShake.duration = duration; }}
   function updateShake() {{
@@ -571,7 +563,10 @@ game_html = f"""
           platforms.push({{ x: pX, y: pY, width: pW, height: 20 }});
           if (Math.random() < 0.5) spawnEnemyOnTerrain(pX, pW, pY);
       }}
-      if (gapWidth === 0 && width > 100) {{ if (Math.random() < 1.0) spawnEnemyOnTerrain(newX, width, topY); if (Math.random() < 0.8) spawnItemOnTerrain(newX, width, topY); }}
+      if (gapWidth === 0 && width > 100) {{ 
+           if (Math.random() < 1.0) spawnEnemyOnTerrain(newX, width, topY); 
+           if (Math.random() < 0.8) spawnItemOnTerrain(newX, width, topY); 
+      }}
   }}
   
   function spawnEnemyOnTerrain(tx, tw, ty) {{
@@ -742,7 +737,6 @@ game_html = f"""
     }}
   }}
 
-  // ★追加: drawParallaxLayer関数定義漏れ修正
   function drawParallaxLayer(imgWrapper, scrollFactor, y) {{
       if (!imgWrapper || !imgWrapper.ready) return;
       const img = imgWrapper.img; const w = img.width;
