@@ -823,8 +823,13 @@
     for (let e of enemies) { 
         let animWrapper = null; 
         if (e.type === 'enemy3') {
-            // ★Enemy3の描画
-            animWrapper = enemy3Anim[e.animIndex] || enemy3Anim[0];
+            // ★Enemy3の描画: 画像が読み込めていなければ1枚目をフォールバックとして使用
+            let w = enemy3Anim[e.animIndex];
+            if (w && w.ready && !w.error) {
+                animWrapper = w;
+            } else {
+                animWrapper = enemy3Anim[0]; // 1枚目を強制使用
+            }
             drawObj(animWrapper, e.x, e.y, e.width, e.height, 'red');
         } else if (e.type === 'hard') { 
             animWrapper = enemy2Anim[e.animIndex] || enemy2Anim[0]; 
